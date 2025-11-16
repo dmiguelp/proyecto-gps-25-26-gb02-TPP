@@ -21,18 +21,54 @@ paths:
     get:
       tags:
       - store
-      summary: Returns a list of products available items in the storefront.
-      description: Returns a list of products available items in the storefront.
+      summary: Returns a paginated list of products available items in the storefront.
+      description: Returns a paginated list of products available items in the storefront.
       operationId: show_storefront_products
+      parameters:
+      - name: page
+        in: query
+        description: Page number (starts at 1)
+        required: false
+        schema:
+          type: integer
+          default: 1
+          minimum: 1
+      - name: limit
+        in: query
+        description: Number of items per page
+        required: false
+        schema:
+          type: integer
+          default: 20
+          minimum: 1
+          maximum: 100
       responses:
         "200":
-          description: Products returned successfully.
+          description: Products returned successfully with pagination metadata.
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Product"
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Product"
+                  pagination:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                        example: 1
+                      limit:
+                        type: integer
+                        example: 20
+                      total:
+                        type: integer
+                        example: 150
+                      totalPages:
+                        type: integer
+                        example: 8
                 x-content-type: application/json
         "400":
           description: Bad request.

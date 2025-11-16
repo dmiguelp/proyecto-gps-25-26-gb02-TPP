@@ -44,6 +44,7 @@ Performance:
     - Realiza 3 peticiones HTTP síncronas al microservicio TyA
     - Considera implementar caché para reducir latencia y carga en TyA
     - Timeout configurado a 5 segundos por petición
+    - Implementa paginación para optimizar transferencia de datos
 """
 
 import connexion
@@ -53,13 +54,17 @@ from swagger_server.models.product import Product
 from swagger_server.dbconx import dbConectar, dbDesconectar
 from swagger_server.controllers.config import USER_SERVICE_URL, TYA_SERVICE_URL
 
-def show_storefront_products():
+def show_storefront_products(page=1, limit=20):
     """
-    Obtiene y retorna el catálogo completo de productos de la tienda.
+    Obtiene y retorna el catálogo paginado de productos de la tienda.
     
     Consulta el microservicio de Temas y Autores (TyA) para obtener todos los
     productos disponibles (canciones, álbumes y merchandising) y los transforma
-    al formato Product esperado por el frontend.
+    al formato Product esperado por el frontend, aplicando paginación a los resultados.
+    
+    Args:
+        page (int, optional): Número de página a retornar (comienza en 1). Default: 1.
+        limit (int, optional): Cantidad de productos por página (1-100). Default: 20.
     
     Flujo de operación:
         1. Realiza 3 peticiones HTTP al microservicio TyA usando endpoints filter:
@@ -72,7 +77,8 @@ def show_storefront_products():
            - GET /merch/list?ids=...: Detalles de merchandising
         3. Mapea cada tipo de producto al modelo Product
         4. Combina todos los productos en una lista única
-        5. Serializa y retorna la lista completa
+        5. Aplica paginación sobre los resultados
+        6. Serializa y retorna la lista paginada con metadata
     
     Mapeo de datos:
         Canciones:
@@ -102,42 +108,68 @@ def show_storefront_products():
         - Errores generales retornan objeto Error con código 500
     
     Returns:
-        List[Dict]|Error: Lista de productos serializados o Error en caso de fallo crítico.
-            Éxito: Lista de diccionarios Product (puede estar vacía)
+        Dict|Error: Objeto con datos paginados y metadata, o Error en caso de fallo crítico.
+            Éxito: {
+                "data": [Product, ...],  # Lista de productos de la página actual
+                "pagination": {
+                    "page": int,         # Página actual
+                    "limit": int,        # Productos por página
+                    "total": int,        # Total de productos disponibles
+                    "totalPages": int    # Total de páginas
+                }
+            }
             Error: Objeto Error con código 500 y mensaje descriptivo
     
     Examples:
-        Response JSON (parcial):
-            [
-                {
-                    "songId": 42,
-                    "albumId": 5,
-                    "merchId": 0,
-                    "name": "Bohemian Rhapsody",
-                    "artist": "12",
-                    "price": 1.99,
-                    "duration": 354,
-                    "genre": "3",
-                    "cover": "data:image/png;base64,...",
-                    ...
-                },
-                {
-                    "albumId": 10,
-                    "name": "Dark Side of the Moon",
-                    "songList": ["1", "2", "3"],
-                    ...
+        Request:
+            GET /store?page=2&limit=10
+        
+        Response JSON:
+            {
+                "data": [
+                    {
+                        "songId": 42,
+                        "albumId": 5,
+                        "merchId": 0,
+                        "name": "Bohemian Rhapsody",
+                        "artist": "12",
+                        "price": 1.99,
+                        "duration": 354,
+                        "genre": "3",
+                        "cover": "data:image/png;base64,...",
+                        ...
+                    },
+                    {
+                        "albumId": 10,
+                        "name": "Dark Side of the Moon",
+                        "songList": ["1", "2", "3"],
+                        ...
+                    }
+                ],
+                "pagination": {
+                    "page": 2,
+                    "limit": 10,
+                    "total": 150,
+                    "totalPages": 15
                 }
-            ]
+            }
+    
+    Paginación:
+        - Si page < 1, se ajusta automáticamente a 1
+        - Si page > totalPages, se ajusta a la última página disponible
+        - Si limit excede el máximo (100), el servidor puede rechazarlo
+        - Lista vacía si no hay productos en el rango solicitado
     
     Performance considerations:
         - 6 peticiones HTTP síncronas (3 para IDs + 3 para detalles)
         - Timeout de 5 segundos por petición
         - No implementa caché (cada request consulta TyA)
+        - Paginación se aplica en memoria después de obtener todos los productos
         - Implementación actual más eficiente que consultas individuales
         - Considera implementar:
             * Peticiones asíncronas con asyncio
             * Caché con TTL configurable
-            * Paginación para catálogos grandes
+            * Paginación a nivel de TyA para reducir transferencia
             * Batch único si TyA implementa endpoint combinado
     
     Data transformation:
@@ -255,8 +287,40 @@ def show_storefront_products():
                 colaborators=[str(i) for i in m.get("collaborators", [])]
             ))
 
-        # --- Retornar la lista formateada ---
-        return [p.to_dict() for p in productos]
+        # --- Aplicar paginación ---
+        # Validar y ajustar parámetros de paginación
+        if page is None or page < 1:
+            page = 1
+        if limit is None or limit < 1:
+            limit = 20
+        if limit > 100:
+            limit = 100
+        
+        # Calcular metadata de paginación
+        total_productos = len(productos)
+        total_pages = (total_productos + limit - 1) // limit if total_productos > 0 else 1
+        
+        # Ajustar página si excede el total
+        if page > total_pages and total_pages > 0:
+            page = total_pages
+        
+        # Calcular índices de slice para la página solicitada
+        start_index = (page - 1) * limit
+        end_index = start_index + limit
+        
+        # Aplicar paginación sobre la lista completa
+        productos_paginados = productos[start_index:end_index]
+        
+        # --- Retornar respuesta con datos paginados y metadata ---
+        return {
+            "data": [p.to_dict() for p in productos_paginados],
+            "pagination": {
+                "page": page,
+                "limit": limit,
+                "total": total_productos,
+                "totalPages": total_pages
+            }
+        }
 
     except Exception as e:
         print(f"Error general al obtener los productos: {e}")
