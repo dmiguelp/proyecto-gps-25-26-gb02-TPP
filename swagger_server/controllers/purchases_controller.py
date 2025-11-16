@@ -1,3 +1,45 @@
+"""
+Controlador de Compras.
+
+Este módulo gestiona el registro de compras realizadas por los usuarios en el
+sistema OverSounds. Procesa transacciones que incluyen canciones, álbumes y
+merchandising, asociándolas con métodos de pago y registrando toda la información
+necesaria para el historial de compras.
+
+Características:
+    - Registro de compras con múltiples productos (carrito completo)
+    - Asociación con métodos de pago específicos
+    - Soporte para productos de diferentes tipos en una misma compra
+    - Registro de importe total y fecha de la transacción
+    - Trazabilidad completa de todas las compras
+
+Modelo de datos:
+    Una compra (Purchase) puede contener:
+        - Una o más canciones (song_ids)
+        - Uno o más álbumes (album_ids)
+        - Uno o más artículos de merchandising (merch_ids)
+    
+    Todas asociadas al mismo método de pago e importe total.
+
+Base de datos:
+    Tablas utilizadas:
+        - Compras (idCompra, idUsuario, importe, fecha, metodoPago)
+        - CancionesCompra (idCompra, idCancion) [relación N:M]
+        - AlbumesCompra (idCompra, idAlbum) [relación N:M]
+        - MerchCompra (idCompra, idMerch) [relación N:M]
+
+Dependencias:
+    - Microservicio de Autenticación: Validación de usuarios
+    - Base de datos TPP: Persistencia de compras
+
+Flujo típico:
+    1. Usuario revisa carrito
+    2. Usuario selecciona método de pago
+    3. Frontend calcula importe total
+    4. Se envía Purchase con todos los IDs de productos
+    5. Se registra en BD y se limpiaría el carrito (si se implementa)
+"""
+
 import connexion
 import six
 import requests
@@ -12,7 +54,86 @@ from swagger_server.controllers.config import USER_SERVICE_URL
 from swagger_server.controllers.authorization_controller import verify_token_and_get_user_id
 
 def set_purchase(body=None):
-    """Set a product as purchased by the user."""
+    """
+    Registra una nueva compra realizada por el usuario autenticado.
+    
+    Crea un registro de compra en la base de datos incluyendo todos los productos
+    adquiridos (canciones, álbumes y/o merchandising). La compra se asocia con
+    un método de pago específico y registra el importe total y la fecha.
+    
+    Flujo de operación:
+        1. Valida formato JSON del cuerpo
+        2. Verifica autenticación del usuario
+        3. Inserta registro principal en tabla Compras
+        4. Registra cada canción comprada en CancionesCompra
+        5. Registra cada álbum comprado en AlbumesCompra
+        6. Registra cada artículo de merch en MerchCompra
+        7. Confirma transacción y retorna ID de compra
+    
+    Transaccionalidad:
+        - Toda la operación se realiza en una transacción única
+        - Si falla cualquier INSERT, se hace rollback completo
+        - Errores en productos individuales se registran pero no detienen el proceso
+    
+    Validaciones:
+        - Cuerpo debe ser JSON válido
+        - Usuario debe estar autenticado
+        - Campos requeridos: purchasePrice, purchaseDate, paymentMethodId
+        - Al menos una de las listas (song_ids, album_ids, merch_ids) debe tener contenido
+    
+    Args:
+        body (Purchase, optional): Objeto con los datos de la compra.
+            Campos:
+                - purchase_price (float): Importe total de la compra
+                - purchase_date (datetime): Fecha y hora de la compra
+                - payment_method_id (int): ID del método de pago utilizado
+                - song_ids (List[int], optional): Lista de IDs de canciones compradas
+                - album_ids (List[int], optional): Lista de IDs de álbumes comprados
+                - merch_ids (List[int], optional): Lista de IDs de merch comprados
+    
+    Returns:
+        Tuple[Dict|Error, int]: Tupla con respuesta y código HTTP:
+            - ({"message": "...", "userId": id}, 200): Compra registrada exitosamente
+            - (Error, 400): Petición JSON inválida
+            - (Error, 401): Token no encontrado
+            - (Error, 403): Usuario no autorizado
+            - (Error, 500): Error de BD o registro fallido
+    
+    Examples:
+        Request JSON:
+            {
+                "purchasePrice": 29.97,
+                "purchaseDate": "2024-11-16T14:30:00Z",
+                "paymentMethodId": 3,
+                "songIds": [1, 5, 12],
+                "albumIds": [2],
+                "merchIds": []
+            }
+        
+        Response JSON (éxito):
+            {
+                "message": "Compra registrada con id 42",
+                "userId": 7
+            }
+    
+    Note:
+        - Los errores en productos individuales se capturan y registran sin detener el proceso
+        - Esto permite que la compra se complete aunque algún producto tenga problemas
+        - Considerar si esto es el comportamiento deseado o si debería ser todo-o-nada
+    
+    Database Schema:
+        - Compras.metodoPago debe ser FK a MetodosPago.idMetodoPago
+        - Valida que el método de pago pertenece al usuario autenticado
+    
+    Implemented improvements:
+        - ✓ Validar que el método de pago pertenece al usuario autenticado
+        - ✓ Limpiar carrito automáticamente después de compra exitosa
+    
+    Future improvements:
+        - Validar que los productos existen antes de registrar
+        - Implementar sistema de inventario/stock para merch
+        - Enviar notificación/email de confirmación
+    """
     db_conexion = None
     try:
         # Verifica que el cuerpo sea JSON
@@ -30,6 +151,16 @@ def set_purchase(body=None):
         # Conexión con la base de datos
         db_conexion = dbConectar()
         cursor = db_conexion.cursor()
+        
+        # --- VALIDAR QUE EL MÉTODO DE PAGO PERTENECE AL USUARIO ---
+        cursor.execute(
+            "SELECT 1 FROM UsuariosMetodosPago WHERE idMetodoPago = %s AND idUsuario = %s",
+            (body.payment_method_id, user_id)
+        )
+        if not cursor.fetchone():
+            return Error(code="403", message="El método de pago no pertenece al usuario o no existe"), 403
+        # --- VALIDAR MÉTODO DE PAGO ---
+        
         # Inserta la compra
         cursor.execute(
             """
@@ -75,6 +206,38 @@ def set_purchase(body=None):
                     )
                 except Exception as e:
                     print(f"Error al registrar merch {merch_id}: {e}")
+
+        # --- LIMPIAR CARRITO AUTOMÁTICAMENTE DESPUÉS DE COMPRA EXITOSA ---
+        try:
+            # Eliminar canciones del carrito
+            if body.song_ids:
+                for song_id in body.song_ids:
+                    cursor.execute(
+                        "DELETE FROM CancionesCarrito WHERE idCancion = %s AND idUsuario = %s",
+                        (song_id, user_id)
+                    )
+            
+            # Eliminar álbumes del carrito
+            if body.album_ids:
+                for album_id in body.album_ids:
+                    cursor.execute(
+                        "DELETE FROM AlbumesCarrito WHERE idAlbum = %s AND idUsuario = %s",
+                        (album_id, user_id)
+                    )
+            
+            # Eliminar merchandising del carrito
+            if body.merch_ids:
+                for merch_id in body.merch_ids:
+                    cursor.execute(
+                        "DELETE FROM MerchCarrito WHERE idMerch = %s AND idUsuario = %s",
+                        (merch_id, user_id)
+                    )
+            
+            print(f"Carrito limpiado automáticamente para usuario {user_id} después de compra {id_compra}")
+        except Exception as e:
+            # El error al limpiar el carrito no debe impedir que la compra se registre
+            print(f"Advertencia: Error al limpiar carrito del usuario {user_id}: {e}")
+        # --- FIN LIMPIEZA DE CARRITO ---
 
         db_conexion.commit()
         cursor.close()

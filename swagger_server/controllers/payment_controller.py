@@ -1,3 +1,32 @@
+"""
+Controlador de Métodos de Pago.
+
+Este módulo gestiona los métodos de pago asociados a los usuarios del sistema
+OverSounds. Permite crear, listar y eliminar métodos de pago (tarjetas de crédito/débito)
+que los usuarios utilizan para realizar compras.
+
+Características:
+    - Alta de nuevos métodos de pago con validación de datos
+    - Consulta de métodos de pago por usuario autenticado
+    - Eliminación de métodos de pago existentes
+    - Almacenamiento seguro de información de tarjetas (enmascarada)
+    - Asociación de métodos de pago con usuarios específicos
+
+Seguridad:
+    - Números de tarjeta almacenados de forma enmascarada
+    - Validación de autenticación requerida en todos los endpoints
+    - Usuarios solo pueden acceder a sus propios métodos de pago
+
+Base de datos:
+    Tablas utilizadas:
+        - MetodosPago (idMetodoPago, numeroTarjeta, mesValidez, anioVlidez, nombreTarjeta)
+        - UsuariosMetodosPago (idUsuario, idMetodoPago) [tabla de relación N:M]
+
+Dependencias:
+    - Microservicio de Autenticación: Validación de usuarios
+    - Base de datos TPP: Persistencia de métodos de pago
+"""
+
 import connexion
 import six
 import requests
@@ -13,7 +42,60 @@ from swagger_server.controllers.authorization_controller import verify_token_and
 
 
 def add_payment_method(body=None):
-    """Add a new payment method."""
+    """
+    Añade un nuevo método de pago para el usuario autenticado.
+    
+    Crea un método de pago en la base de datos y lo asocia con el usuario actual.
+    La información de la tarjeta se almacena de forma enmascarada para cumplir
+    con estándares de seguridad (PCI-DSS).
+    
+    Flujo de operación:
+        1. Valida el formato JSON del cuerpo de la petición
+        2. Verifica la autenticación del usuario
+        3. Inserta el método de pago en tabla MetodosPago
+        4. Asocia el método de pago con el usuario en UsuariosMetodosPago
+        5. Retorna confirmación con el ID del método creado
+    
+    Validaciones:
+        - Cuerpo debe ser JSON válido
+        - Token de usuario debe ser válido
+        - Campos requeridos: cardNumber, expireMonth, expireYear, cardHolder
+        - expireMonth debe estar entre 1 y 12
+    
+    Args:
+        body (PaymentMethod, optional): Objeto con los datos del método de pago.
+            Campos:
+                - card_number (str): Número de tarjeta enmascarado (ej: "**** **** **** 1234")
+                - expire_month (int): Mes de vencimiento (1-12)
+                - expire_year (int): Año de vencimiento (ej: 2030)
+                - card_holder (str): Nombre del titular de la tarjeta
+    
+    Returns:
+        Tuple[Dict|Error, int]: Tupla con respuesta y código HTTP:
+            - ({"message": "...", "userId": id}, 200): Método creado exitosamente
+            - (Error, 400): Petición JSON inválida
+            - (Error, 401): Token no encontrado
+            - (Error, 403): Usuario no autorizado
+            - (Error, 500): Error de BD o creación fallida
+    
+    Examples:
+        Request JSON:
+            {
+                "cardNumber": "**** **** **** 1234",
+                "expireMonth": 12,
+                "expireYear": 2025,
+                "cardHolder": "Juan Pérez"
+            }
+    
+    Security:
+        - Números de tarjeta deben venir ya enmascarados desde el cliente
+        - No se almacenan números completos de tarjetas
+        - Asociación usuario-método previene acceso no autorizado
+    
+    Note:
+        Utiliza RETURNING en INSERT para obtener el ID del método creado,
+        característica específica de PostgreSQL.
+    """
     db_conexion = None
     try:
         if not connexion.request.is_json:
@@ -74,7 +156,39 @@ def add_payment_method(body=None):
 
 
 def delete_payment_method(payment_method_id):
-    """Delete a payment method by ID."""
+    """
+    Elimina un método de pago por su ID.
+    
+    Elimina el método de pago de la base de datos incluyendo sus asociaciones
+    con usuarios. La eliminación es permanente y no puede deshacerse.
+    
+    Operaciones en BD:
+        1. Elimina de tabla MetodosPago (eliminación principal)
+        2. Elimina de tabla UsuariosMetodosPago (limpieza de relaciones)
+    
+    Validaciones:
+        - Usuario debe estar autenticado (token válido)
+        - Método de pago debe existir (verifica rowcount)
+    
+    Args:
+        payment_method_id (str): ID del método de pago a eliminar.
+    
+    Returns:
+        Tuple[Dict|Error, int]: Tupla con respuesta y código HTTP:
+            - ({"message": "..."}, 200): Método eliminado exitosamente
+            - (Error, 401): Token no encontrado
+            - (Error, 403): Usuario no autorizado
+            - (Error, 404): Método de pago no encontrado
+            - (Error, 500): Error interno del servidor
+    
+    Security:
+        Solo permite eliminar métodos de pago que pertenecen al usuario autenticado.
+        Valida la propiedad del método antes de la eliminación.
+    
+    Note:
+        La validación de propiedad previene que usuarios eliminen métodos de pago
+        de otros usuarios, mejorando la seguridad del sistema.
+    """
     db_conexion = None
     try:
 
@@ -88,11 +202,20 @@ def delete_payment_method(payment_method_id):
         db_conexion = dbConectar()
         cursor = db_conexion.cursor()
 
-        cursor.execute("DELETE FROM MetodosPago WHERE idMetodoPago = %s", (payment_method_id,))
-        if cursor.rowcount == 0:
-            return Error(code="404", message="Método de pago no encontrado"), 404
+        # Verificar que el método de pago pertenece al usuario autenticado
+        cursor.execute(
+            "SELECT 1 FROM UsuariosMetodosPago WHERE idMetodoPago = %s AND idUsuario = %s",
+            (payment_method_id, user_id)
+        )
+        if not cursor.fetchone():
+            return Error(code="404", message="Método de pago no encontrado o no pertenece al usuario"), 404
+
+        # Eliminar la asociación usuario-método
+        cursor.execute("DELETE FROM UsuariosMetodosPago WHERE idMetodoPago = %s AND idUsuario = %s",
+                      (payment_method_id, user_id))
         
-        cursor.execute("DELETE FROM UsuariosMetodosPago WHERE idMetodoPago = %s", (payment_method_id,))
+        # Eliminar el método de pago
+        cursor.execute("DELETE FROM MetodosPago WHERE idMetodoPago = %s", (payment_method_id,))
         
         db_conexion.commit()
         cursor.close()
@@ -110,7 +233,62 @@ def delete_payment_method(payment_method_id):
 
 
 def show_user_payment_methods():
-    """Returns a list of payment methods for the selected user."""
+    """
+    Retorna la lista de métodos de pago del usuario autenticado.
+    
+    Consulta todos los métodos de pago asociados al usuario actual en la base
+    de datos y construye objetos PaymentMethod completos con toda la información.
+    
+    Flujo de operación:
+        1. Valida token y obtiene user_id
+        2. Consulta IDs de métodos de pago en UsuariosMetodosPago
+        3. Para cada ID, consulta detalles completos en MetodosPago
+        4. Construye objetos PaymentMethod y añade ID como atributo adicional
+        5. Retorna lista de métodos serializados
+    
+    Estructura de respuesta:
+        Cada método de pago incluye:
+            - id: ID del método (añadido dinámicamente)
+            - cardNumber: Número enmascarado
+            - expireMonth: Mes de vencimiento
+            - expireYear: Año de vencimiento
+            - cardHolder: Nombre del titular
+    
+    Returns:
+        Tuple[List[Dict]|Error, int]: Tupla con respuesta y código HTTP:
+            - ([{method1}, {method2}, ...], 200): Lista de métodos (puede estar vacía)
+            - (Error, 401): Token no encontrado
+            - (Error, 403): Usuario no autorizado
+            - (Error, 500): Error interno del servidor o BD
+    
+    Examples:
+        Response JSON:
+            [
+                {
+                    "id": 1,
+                    "cardNumber": "**** **** **** 1234",
+                    "expireMonth": 12,
+                    "expireYear": 2025,
+                    "cardHolder": "Juan Pérez"
+                },
+                {
+                    "id": 2,
+                    "cardNumber": "**** **** **** 5678",
+                    "expireMonth": 6,
+                    "expireYear": 2026,
+                    "cardHolder": "María García"
+                }
+            ]
+    
+    Note:
+        - Retorna lista vacía [] si el usuario no tiene métodos de pago
+        - El campo 'id' se añade dinámicamente y no forma parte del modelo PaymentMethod oficial
+        - La función maneja correctamente el caso de IDs sin métodos asociados (datos huérfanos)
+    
+    Performance:
+        Realiza N+1 queries (1 para IDs + N para detalles). Para usuarios con muchos
+        métodos de pago, considerar optimizar con JOIN o query única.
+    """
     db_conexion = None
     try:
 
