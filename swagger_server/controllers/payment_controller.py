@@ -36,8 +36,6 @@ from swagger_server.models.payment_method import PaymentMethod  # noqa: E501
 from swagger_server import util
 from swagger_server.dbconx import dbConectar, dbDesconectar
 
-# URL del microservicio de usuarios
-from swagger_server.controllers.config import USER_SERVICE_URL
 from swagger_server.controllers.authorization_controller import verify_token_and_get_user_id
 
 
@@ -154,7 +152,7 @@ def add_payment_method(body=None):
             dbDesconectar(db_conexion)
 
 
-def delete_payment_method(payment_method_id):
+def delete_payment_method(paymentMethodId):
     """
     Elimina un método de pago por su ID.
     
@@ -203,17 +201,17 @@ def delete_payment_method(payment_method_id):
         # Verificar que el método de pago pertenece al usuario autenticado
         cursor.execute(
             "SELECT 1 FROM UsuariosMetodosPago WHERE idMetodoPago = %s AND idUsuario = %s",
-            (payment_method_id, user_id)
+            (paymentMethodId, user_id)
         )
         if not cursor.fetchone():
             return Error(code="404", message="Método de pago no encontrado o no pertenece al usuario"), 404
 
         # Eliminar la asociación usuario-método
         cursor.execute("DELETE FROM UsuariosMetodosPago WHERE idMetodoPago = %s AND idUsuario = %s",
-                      (payment_method_id, user_id))
+                      (paymentMethodId, user_id))
         
         # Eliminar el método de pago
-        cursor.execute("DELETE FROM MetodosPago WHERE idMetodoPago = %s", (payment_method_id,))
+        cursor.execute("DELETE FROM MetodosPago WHERE idMetodoPago = %s", (paymentMethodId,))
         
         db_conexion.commit()
         cursor.close()

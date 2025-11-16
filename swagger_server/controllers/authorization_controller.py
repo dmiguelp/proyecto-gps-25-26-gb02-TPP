@@ -1,6 +1,7 @@
 from typing import List
 import requests
 import connexion
+import os
 from swagger_server.models.error import Error
 """
 Controlador de autorización y autenticación.
@@ -10,8 +11,20 @@ AUTH_SERVER = '10.1.1.4:8080'
 
 def is_valid_token(token):
     """
-    # Delega validación del token al servidor de autenticación
+    Delega validación del token al servidor de autenticación.
+    
+    En modo TEST (variable TESTING=true), retorna un usuario mockeado
+    para evitar dependencias externas.
     """
+    # Si estamos en modo test, retornar usuario mockeado
+    if os.environ.get('TESTING') == 'true':
+        return {
+            'id': 1,
+            'username': 'test_user',
+            'scopes': ['read:cart', 'write:cart', 'read:payment', 'write:payment', 
+                       'read:purchase', 'write:purchase', 'read:store', 'write:store']
+        }
+    
     resp = requests.get(f"{AUTH_SERVER}/auth", timeout=2, headers={"Accept": "application/json", "Cookie":f"oversound_auth={token}"})
     
     return resp.json() if resp.ok else None

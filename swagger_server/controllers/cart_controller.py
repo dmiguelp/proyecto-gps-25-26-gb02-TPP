@@ -33,7 +33,7 @@ from swagger_server.models.error import Error  # noqa: E501
 from swagger_server.models.product import Product  # noqa: E501
 from swagger_server import util
 from swagger_server.dbconx import dbConectar, dbDesconectar
-from swagger_server.controllers.config import USER_SERVICE_URL, TYA_SERVICE_URL
+from swagger_server.controllers.config import TYA_SERVICE_URL
 from swagger_server.controllers.authorization_controller import verify_token_and_get_user_id
 
 
@@ -295,7 +295,7 @@ def get_cart_products():
             dbDesconectar(db_conexion)
 
 
-def remove_from_cart(product_id, type):
+def remove_from_cart(productId, type):
     """
     Elimina un producto del carrito del usuario autenticado.
     
@@ -360,30 +360,30 @@ def remove_from_cart(product_id, type):
         if type == "song" or type == "0":
             # Verificar que la canción existe en el carrito del usuario
             cursor.execute("SELECT 1 FROM CancionesCarrito WHERE idCancion = %s AND idUsuario = %s",
-                           (product_id, user_id))
+                           (productId, user_id))
             if not cursor.fetchone():
                 return Error(code="404", message="La canción no está en el carrito"), 404
             
             cursor.execute("DELETE FROM CancionesCarrito WHERE idCancion = %s AND idUsuario = %s",
-                           (product_id, user_id))
+                           (productId, user_id))
         elif type == "album" or type == "1":
             # Verificar que el álbum existe en el carrito del usuario
             cursor.execute("SELECT 1 FROM AlbumesCarrito WHERE idAlbum = %s AND idUsuario = %s",
-                           (product_id, user_id))
+                           (productId, user_id))
             if not cursor.fetchone():
                 return Error(code="404", message="El álbum no está en el carrito"), 404
             
             cursor.execute("DELETE FROM AlbumesCarrito WHERE idAlbum = %s AND idUsuario = %s",
-                           (product_id, user_id))
+                           (productId, user_id))
         elif type == "merch" or type == "2":
             # Verificar que el merch existe en el carrito del usuario
             cursor.execute("SELECT 1 FROM MerchCarrito WHERE idMerch = %s AND idUsuario = %s",
-                           (product_id, user_id))
+                           (productId, user_id))
             if not cursor.fetchone():
                 return Error(code="404", message="El artículo no está en el carrito"), 404
             
             cursor.execute("DELETE FROM MerchCarrito WHERE idMerch = %s AND idUsuario = %s",
-                           (product_id, user_id))
+                           (productId, user_id))
         else:
             return Error(code="400", message="Tipo de producto inválido"), 400
     

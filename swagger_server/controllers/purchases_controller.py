@@ -50,7 +50,6 @@ from swagger_server.models.purchase import Purchase  # noqa: E501
 from swagger_server import util
 from swagger_server.dbconx import dbConectar, dbDesconectar
 
-from swagger_server.controllers.config import USER_SERVICE_URL
 from swagger_server.controllers.authorization_controller import verify_token_and_get_user_id
 
 def set_purchase(body=None):
