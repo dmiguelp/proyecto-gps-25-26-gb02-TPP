@@ -1,1 +1,1 @@
-TYA_SERVICE_URL = "http://localhost:8000"  # ajusta al host de TyA
+TYA_SERVICE_URL = "http://10.1.1.2:8081"  # ajusta al host de TyA

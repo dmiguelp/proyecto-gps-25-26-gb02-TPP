@@ -233,9 +233,9 @@ def get_cart_products():
                     producto_schema.name = producto_data.get("title")
                     producto_schema.description = producto_data.get("description")
                     producto_schema.price = producto_data.get("price")
-                    producto_schema.artist = str(producto_data.get("artistId", 0))
-                    producto_schema.colaborators = [str(i) for i in producto_data.get("collaborators", [])]
-                    producto_schema.genre = str(producto_data.get("genres", ["0"])[0]) if producto_data.get("genres") else "0"
+                    producto_schema.artist = producto_data.get("artistId", 0)
+                    producto_schema.colaborators = producto_data.get("collaborators", [])
+                    producto_schema.genre = producto_data.get("genres", [0])[0] if producto_data.get("genres") else 0
                     producto_schema.duration = producto_data.get("duration", 0)
                     producto_schema.cover = producto_data.get("cover")
                     producto_schema.release_date = producto_data.get("releaseDate")
@@ -254,10 +254,10 @@ def get_cart_products():
                     producto_schema.name = producto_data.get("title")
                     producto_schema.description = producto_data.get("description")
                     producto_schema.price = producto_data.get("price")
-                    producto_schema.artist = str(producto_data.get("artistId", 0))
-                    producto_schema.colaborators = [str(i) for i in producto_data.get("collaborators", [])]
-                    producto_schema.genre = str(producto_data.get("genres", ["0"])[0]) if producto_data.get("genres") else "0"
-                    producto_schema.song_list = [str(i) for i in producto_data.get("songs", [])]
+                    producto_schema.artist = producto_data.get("artistId", 0)
+                    producto_schema.colaborators = producto_data.get("collaborators", [])
+                    producto_schema.genre = producto_data.get("genres", [0])[0] if producto_data.get("genres") else 0
+                    producto_schema.song_list = producto_data.get("songs", [])
                     producto_schema.cover = producto_data.get("cover")
                     producto_schema.release_date = producto_data.get("releaseDate")
                     productos.append(producto_schema)
@@ -275,9 +275,9 @@ def get_cart_products():
                     producto_schema.name = producto_data.get("title")
                     producto_schema.description = producto_data.get("description")
                     producto_schema.price = producto_data.get("price")
-                    producto_schema.artist = str(producto_data.get("artistId", 0))
-                    producto_schema.colaborators = [str(i) for i in producto_data.get("collaborators", [])]
-                    producto_schema.genre = "Merch"
+                    producto_schema.artist = producto_data.get("artistId", 0)
+                    producto_schema.colaborators = producto_data.get("collaborators", [])
+                    producto_schema.genre = None  # Merch no tiene género en TyA
                     producto_schema.cover = producto_data.get("cover")
                     producto_schema.release_date = producto_data.get("releaseDate")
                     productos.append(producto_schema)

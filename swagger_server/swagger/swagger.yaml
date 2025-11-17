@@ -242,7 +242,7 @@ paths:
         style: simple
         explode: false
         schema:
-          type: string   
+          type: integer   
       responses:
         "200":
           description: Payment method successfully deleted.
@@ -276,6 +276,14 @@ paths:
       responses:
         "200":
           description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  purchaseId:
+                    type: integer
+                    example: 100
         "422":
           description: Validation exception
         "500":
@@ -295,7 +303,7 @@ components:
       - artist
       - colaborators
       - cover
-      - date
+      - releaseDate
       - description
       - name
       - price
@@ -327,16 +335,16 @@ components:
           description: Description of the product
           example: CELEBRATING TEN YEARS OF TEENAGE DREAM!! REMASTERED IN 4K!
         artist:
-          type: string
-          description: Name of the Artist that the product belongs to
-          example: Willyrex
+          type: integer
+          description: ID of the Artist that the product belongs to
+          example: 0
         colaborators:
           type: array
-          description: List of Names of Artists who collaborated on the product (only
+          description: List of IDs of Artists who collaborated on the product (only
             song and album)
           example:
-          - Vegetta
-          - Staxx
+          - 1
+          - 2
           items:
             type: integer
         releaseDate:
@@ -350,9 +358,9 @@ components:
           format: int32
           example: 10
         genre:
-          type: string
-          description: Genre of a song (null if not song or album)
-          example: Pop
+          type: integer
+          description: ID of the primary genre of a song (null if not song or album)
+          example: 0
         cover:
           type: string
           description: base64 image of the cover
@@ -368,23 +376,23 @@ components:
             type: integer
       description: "A product on the store, that can be either a song, album or merch."
       example:
-        artist: Willyrex
+        artist: 0
         releaseDate: 2010-01-15T10:30:00Z
         albumId: 0
         description: CELEBRATING TEN YEARS OF TEENAGE DREAM!! REMASTERED IN 4K!
         songList:
-        - Album 1
-        - Album 2
-        - Album 3
+        - 1
+        - 2
+        - 3
         merchId: 0
         duration: 10
         cover: "data:image/png;base64,iVBORw0KGgoAAAAN..."
         price: 10.99
         name: California Girls
-        genre: Pop
+        genre: 0
         colaborators:
-        - Vegetta
-        - Staxx
+        - 1
+        - 2
         songId: 0
     PaymentMethod:
       required:

@@ -268,7 +268,7 @@ def show_storefront_products(page=1, limit=20):
             productos.append(Product(
                 song_id=c.get("songId"),
                 name=c.get("title"),
-                artist=str(c.get("artistId")),
+                artist=c.get("artistId"),
                 release_date=f"{c.get('releaseDate')}T00:00:00Z",
                 album_id=c.get("albumId"),
                 description=c.get("description"),
@@ -277,8 +277,8 @@ def show_storefront_products(page=1, limit=20):
                 duration=c.get("duration"),
                 cover=c.get("cover"),
                 price=c.get("price"),
-                genre=str(c.get("genres", ["0"])[0]) if c.get("genres") else "0",
-                colaborators=[str(i) for i in c.get("collaborators", [])]
+                genre=c.get("genres", [0])[0] if c.get("genres") else 0,
+                colaborators=c.get("collaborators", [])
             ))
 
         # --- Mapear álbumes ---
@@ -286,17 +286,17 @@ def show_storefront_products(page=1, limit=20):
             productos.append(Product(
                 song_id=0,
                 name=a.get("title"),
-                artist=str(a.get("artistId")),
+                artist=a.get("artistId"),
                 release_date=f"{a.get('releaseDate')}T00:00:00Z",
                 album_id=a.get("albumId"),
                 description=a.get("description"),
-                song_list=[str(i) for i in a.get("songs", [])],
+                song_list=a.get("songs", []),
                 merch_id=0,
                 duration=0,
                 cover=a.get("cover"),
                 price=a.get("price"),
-                genre=str(a.get("genres", ["0"])[0]) if a.get("genres") else "0",
-                colaborators=[str(i) for i in a.get("collaborators", [])]
+                genre=a.get("genres", [0])[0] if a.get("genres") else 0,
+                colaborators=a.get("collaborators", [])
             ))
 
         # --- Mapear merch ---
@@ -304,7 +304,7 @@ def show_storefront_products(page=1, limit=20):
             productos.append(Product(
                 song_id=0,
                 name=m.get("title"),
-                artist=str(m.get("artistId")),
+                artist=m.get("artistId"),
                 release_date=f"{m.get('releaseDate')}T00:00:00Z",
                 album_id=0,
                 description=m.get("description"),
@@ -313,8 +313,8 @@ def show_storefront_products(page=1, limit=20):
                 duration=0,
                 cover=m.get("cover"),
                 price=m.get("price"),
-                genre="Merch",
-                colaborators=[str(i) for i in m.get("collaborators", [])]
+                genre=None,  # Merch no tiene género en TyA
+                colaborators=m.get("collaborators", [])
             ))
 
         # --- Aplicar paginación ---

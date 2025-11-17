@@ -133,7 +133,7 @@ class Product(Model):
         Los tipos en colaborators y song_list están definidos como List[int]
         pero en la práctica se almacenan como strings en algunas operaciones.
     """
-    def __init__(self, song_id: int=None, album_id: int=None, merch_id: int=None, name: str=None, price: float=None, description: str=None, artist: str=None, colaborators: List[int]=None, release_date: datetime=None, duration: int=None, genre: str=None, cover: str=None, song_list: List[int]=None):  # noqa: E501
+    def __init__(self, song_id: int=None, album_id: int=None, merch_id: int=None, name: str=None, price: float=None, description: str=None, artist: int=None, colaborators: List[int]=None, release_date: datetime=None, duration: int=None, genre: int=None, cover: str=None, song_list: List[int]=None):  # noqa: E501
         """
         Constructor del modelo Product.
         
@@ -147,13 +147,13 @@ class Product(Model):
             name (str): Nombre/título del producto.
             price (float): Precio del producto.
             description (str): Descripción del producto.
-            artist (str): ID del artista principal (como string).
+            artist (int): ID del artista principal.
             colaborators (List[int]): Lista de IDs de colaboradores.
             release_date (datetime, optional): Fecha de lanzamiento.
             duration (int, optional): Duración en segundos (solo canciones).
-            genre (str, optional): Género musical o "Merch".
+            genre (int, optional): ID del género musical.
             cover (str): Portada en formato base64.
-            song_list (List[int], optional): Lista de canciones (solo álbumes).
+            song_list (List[int], optional): Lista de IDs de canciones (solo álbumes).
         
         Note:
             Para crear un producto válido, debe tener al menos uno de:
@@ -166,11 +166,11 @@ class Product(Model):
             'name': str,
             'price': float,
             'description': str,
-            'artist': str,
+            'artist': int,
             'colaborators': List[int],
             'release_date': datetime,
             'duration': int,
-            'genre': str,
+            'genre': int,
             'cover': str,
             'song_list': List[int]
         }
@@ -380,24 +380,24 @@ class Product(Model):
         self._description = description
 
     @property
-    def artist(self) -> str:
+    def artist(self) -> int:
         """Gets the artist of this Product.
 
-        Name of the Artist that the product belongs to  # noqa: E501
+        ID of the Artist that the product belongs to  # noqa: E501
 
         :return: The artist of this Product.
-        :rtype: str
+        :rtype: int
         """
         return self._artist
 
     @artist.setter
-    def artist(self, artist: str):
+    def artist(self, artist: int):
         """Sets the artist of this Product.
 
-        Name of the Artist that the product belongs to  # noqa: E501
+        ID of the Artist that the product belongs to  # noqa: E501
 
         :param artist: The artist of this Product.
-        :type artist: str
+        :type artist: int
         """
         if artist is None:
             raise ValueError("Invalid value for `artist`, must not be `None`")  # noqa: E501
@@ -408,7 +408,7 @@ class Product(Model):
     def colaborators(self) -> List[int]:
         """Gets the colaborators of this Product.
 
-        List of Names of Artists who collaborated on the product (only song and album)  # noqa: E501
+        List of IDs of Artists who collaborated on the product (only song and album)  # noqa: E501
 
         :return: The colaborators of this Product.
         :rtype: List[int]
@@ -419,7 +419,7 @@ class Product(Model):
     def colaborators(self, colaborators: List[int]):
         """Sets the colaborators of this Product.
 
-        List of Names of Artists who collaborated on the product (only song and album)  # noqa: E501
+        List of IDs of Artists who collaborated on the product (only song and album)  # noqa: E501
 
         :param colaborators: The colaborators of this Product.
         :type colaborators: List[int]
@@ -476,24 +476,24 @@ class Product(Model):
         self._duration = duration
 
     @property
-    def genre(self) -> str:
+    def genre(self) -> int:
         """Gets the genre of this Product.
 
-        Genre of a song (null if not song or album)  # noqa: E501
+        ID of the primary genre of a song (null if not song or album)  # noqa: E501
 
         :return: The genre of this Product.
-        :rtype: str
+        :rtype: int
         """
         return self._genre
 
     @genre.setter
-    def genre(self, genre: str):
+    def genre(self, genre: int):
         """Sets the genre of this Product.
 
-        Genre of a song (null if not song or album)  # noqa: E501
+        ID of the primary genre of a song (null if not song or album)  # noqa: E501
 
         :param genre: The genre of this Product.
-        :type genre: str
+        :type genre: int
         """
 
         self._genre = genre
