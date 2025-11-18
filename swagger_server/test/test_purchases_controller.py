@@ -54,7 +54,7 @@ class TestPurchasesController(BaseTestCase):
         )
         
         # Configurar cookie en el cliente de test
-        self.client.set_cookie('localhost', 'token', 'test_token_123')
+        self.client.set_cookie('localhost', 'oversound_auth', 'test_token_123')
         
         response = self.client.open(
             '/purchase',

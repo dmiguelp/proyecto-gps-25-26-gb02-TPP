@@ -36,7 +36,7 @@ class TestPaymentController(BaseTestCase):
         )
         
         # Configurar cookie en el cliente de test
-        self.client.set_cookie('localhost', 'token', 'test_token_123')
+        self.client.set_cookie('localhost', 'oversound_auth', 'test_token_123')
         
         response = self.client.open(
             '/payment',
@@ -59,7 +59,7 @@ class TestPaymentController(BaseTestCase):
         mock_cursor.fetchone.return_value = (1,)  # Método pertenece al usuario
         
         # Configurar cookie en el cliente de test
-        self.client.set_cookie('localhost', 'token', 'test_token_123')
+        self.client.set_cookie('localhost', 'oversound_auth', 'test_token_123')
         
         response = self.client.open(
             '/payment/{paymentMethodId}'.format(paymentMethodId='1'),
@@ -80,7 +80,7 @@ class TestPaymentController(BaseTestCase):
         mock_cursor.fetchall.return_value = []  # Sin métodos de pago
         
         # Configurar cookie en el cliente de test
-        self.client.set_cookie('localhost', 'token', 'test_token_123')
+        self.client.set_cookie('localhost', 'oversound_auth', 'test_token_123')
         
         response = self.client.open(
             '/payment',

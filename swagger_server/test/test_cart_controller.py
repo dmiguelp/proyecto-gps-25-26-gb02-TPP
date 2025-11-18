@@ -33,7 +33,7 @@ class TestCartController(BaseTestCase):
         body = CartBody(song_id=1, album_id=None, merch_id=None, unidades=None)
         
         # Configurar cookie en el cliente de test
-        self.client.set_cookie('localhost', 'token', 'test_token_123')
+        self.client.set_cookie('localhost', 'oversound_auth', 'test_token_123')
         
         response = self.client.open(
             '/cart',
@@ -56,7 +56,7 @@ class TestCartController(BaseTestCase):
         mock_cursor.fetchall.return_value = []  # Carrito vacío
         
         # Configurar cookie en el cliente de test
-        self.client.set_cookie('localhost', 'token', 'test_token_123')
+        self.client.set_cookie('localhost', 'oversound_auth', 'test_token_123')
         
         response = self.client.open(
             '/cart',
@@ -77,7 +77,7 @@ class TestCartController(BaseTestCase):
         mock_cursor.fetchone.return_value = (1,)  # Existe en carrito
         
         # Configurar cookie en el cliente de test
-        self.client.set_cookie('localhost', 'token', 'test_token_123')
+        self.client.set_cookie('localhost', 'oversound_auth', 'test_token_123')
         
         response = self.client.open(
             '/cart/{productId}'.format(productId=1),

@@ -50,8 +50,6 @@ from swagger_server.models.purchase import Purchase  # noqa: E501
 from swagger_server import util
 from swagger_server.dbconx import dbConectar, dbDesconectar
 
-from swagger_server.controllers.authorization_controller import verify_token_and_get_user_id
-
 def set_purchase(body=None):
     """
     Registra una nueva compra realizada por el usuario autenticado.
@@ -140,11 +138,9 @@ def set_purchase(body=None):
             return Error(code="400", message="El cuerpo de la petición no es JSON"), 400
         body = Purchase.from_dict(connexion.request.get_json())
 
-        # --- VERIFICAR TOKEN ---
-        user_id, error_response = verify_token_and_get_user_id()
-        if error_response:
-            return error_response
-        # --- VERIFICAR TOKEN ---
+        # Obtener user_id del contexto (ya validado por check_oversound_auth)
+        user_info = connexion.context.get('token_info')
+        user_id = user_info.get('id')
 
         # Conexión con la base de datos
         db_conexion = dbConectar()

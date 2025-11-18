@@ -502,7 +502,7 @@ components:
   securitySchemes:
     oversound_auth:
       type: apiKey
-      name: token
+      name: oversound_auth
       in: cookie
-      x-apikeyInfoFunc: swagger_server.controllers.authorization_controller.check_oversounds_auth
+      x-apikeyInfoFunc: swagger_server.controllers.authorization_controller.check_oversound_auth
 

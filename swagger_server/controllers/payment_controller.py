@@ -36,8 +36,6 @@ from swagger_server.models.payment_method import PaymentMethod  # noqa: E501
 from swagger_server import util
 from swagger_server.dbconx import dbConectar, dbDesconectar
 
-from swagger_server.controllers.authorization_controller import verify_token_and_get_user_id
-
 
 def add_payment_method(body=None):
     """
@@ -100,11 +98,9 @@ def add_payment_method(body=None):
             return Error(code="400", message="El cuerpo de la petición no es JSON"), 400
         body = PaymentMethod.from_dict(connexion.request.get_json())
 
-        # --- VERIFICAR TOKEN ---
-        user_id, error_response = verify_token_and_get_user_id()
-        if error_response:
-            return error_response
-        # --- VERIFICAR TOKEN ---
+        # Obtener user_id del contexto (ya validado por check_oversound_auth)
+        user_info = connexion.context.get('token_info')
+        user_id = user_info.get('id')
 
 
         # Conexión a la base de datos
@@ -188,12 +184,9 @@ def delete_payment_method(paymentMethodId):
     """
     db_conexion = None
     try:
-
-        # --- VERIFICAR TOKEN ---
-        user_id, error_response = verify_token_and_get_user_id()
-        if error_response:
-            return error_response
-        # --- VERIFICAR TOKEN ---
+        # Obtener user_id del contexto (ya validado por check_oversound_auth)
+        user_info = connexion.context.get('token_info')
+        user_id = user_info.get('id')
 
         db_conexion = dbConectar()
         cursor = db_conexion.cursor()
@@ -287,12 +280,9 @@ def show_user_payment_methods():
     """
     db_conexion = None
     try:
-
-        # --- VERIFICAR TOKEN ---
-        user_id, error_response = verify_token_and_get_user_id()
-        if error_response:
-            return error_response
-        # --- VERIFICAR TOKEN ---
+        # Obtener user_id del contexto (ya validado por check_oversound_auth)
+        user_info = connexion.context.get('token_info')
+        user_id = user_info.get('id')
 
         # Consultar la base de datos con el user_id
         db_conexion = dbConectar()
