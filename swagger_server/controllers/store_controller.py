@@ -209,11 +209,35 @@ def show_storefront_products(page=1, limit=20):
                 headers={"Accept": "application/json"}
             )
             
-            # Extraer solo los IDs numéricos de los objetos de respuesta
-            # Validación: solo incluye items que tengan el campo ID correspondiente
-            song_ids = [item.get("songId") for item in song_ids_response.json() if item.get("songId")] if song_ids_response.ok else []
-            album_ids = [item.get("albumId") for item in album_ids_response.json() if item.get("albumId")] if album_ids_response.ok else []
-            merch_ids = [item.get("merchId") for item in merch_ids_response.json() if item.get("merchId")] if merch_ids_response.ok else []
+            # Extraer IDs - puede venir como lista de enteros [1, 2, 3] o lista de objetos [{"songId": 1}]
+            song_ids = []
+            album_ids = []
+            merch_ids = []
+            
+            if song_ids_response.ok:
+                data = song_ids_response.json()
+                if data and len(data) > 0:
+                    # Verificar si es lista de enteros o lista de objetos
+                    if isinstance(data[0], int):
+                        song_ids = data
+                    elif isinstance(data[0], dict):
+                        song_ids = [item.get("songId") for item in data if item.get("songId")]
+            
+            if album_ids_response.ok:
+                data = album_ids_response.json()
+                if data and len(data) > 0:
+                    if isinstance(data[0], int):
+                        album_ids = data
+                    elif isinstance(data[0], dict):
+                        album_ids = [item.get("albumId") for item in data if item.get("albumId")]
+            
+            if merch_ids_response.ok:
+                data = merch_ids_response.json()
+                if data and len(data) > 0:
+                    if isinstance(data[0], int):
+                        merch_ids = data
+                    elif isinstance(data[0], dict):
+                        merch_ids = [item.get("merchId") for item in data if item.get("merchId")]
             
             # PASO 2: Obtener detalles completos usando endpoints /list
             # ----------------------------------------------------------
@@ -265,56 +289,116 @@ def show_storefront_products(page=1, limit=20):
 
         # --- Mapear / Enmascarar canciones ---
         for c in canciones:
+            # Convertir strings a tipos correctos
+            artist_id = c.get("artistId")
+            if isinstance(artist_id, str):
+                artist_id = int(artist_id) if artist_id else 0
+            
+            duration = c.get("duration")
+            if isinstance(duration, str):
+                duration = int(duration) if duration else 0
+            
+            genres = c.get("genres", [])
+            if genres and isinstance(genres[0], str):
+                genres = [int(g) for g in genres if g]
+            genre = genres[0] if genres else 0
+            
+            collaborators = c.get("collaborators", [])
+            if collaborators and isinstance(collaborators[0], str):
+                collaborators = [int(col) for col in collaborators if col]
+            
+            price_str = c.get("price", "0")
+            if isinstance(price_str, str):
+                price_str = price_str.replace(",", ".")
+            price = float(price_str) if price_str else 0.0
+            
             productos.append(Product(
                 song_id=c.get("songId"),
                 name=c.get("title"),
-                artist=c.get("artistId"),
-                release_date=f"{c.get('releaseDate')}T00:00:00Z",
+                artist=artist_id,
+                release_date=f"{c.get('releaseDate')}T00:00:00Z" if c.get('releaseDate') else None,
                 album_id=c.get("albumId"),
                 description=c.get("description"),
                 song_list=[],
                 merch_id=0,
-                duration=c.get("duration"),
+                duration=duration,
                 cover=c.get("cover"),
-                price=c.get("price"),
-                genre=c.get("genres", [0])[0] if c.get("genres") else 0,
-                colaborators=c.get("collaborators", [])
+                price=price,
+                genre=genre,
+                colaborators=collaborators
             ))
 
         # --- Mapear álbumes ---
         for a in albumes:
+            # Convertir strings a tipos correctos
+            artist_id = a.get("artistId")
+            if isinstance(artist_id, str):
+                artist_id = int(artist_id) if artist_id else 0
+            
+            genres = a.get("genres", [])
+            if genres and isinstance(genres[0], str):
+                genres = [int(g) for g in genres if g]
+            genre = genres[0] if genres else 0
+            
+            collaborators = a.get("collaborators", [])
+            if collaborators and isinstance(collaborators[0], str):
+                collaborators = [int(col) for col in collaborators if col]
+            
+            songs = a.get("songs", [])
+            if songs and isinstance(songs[0], str):
+                songs = [int(s) for s in songs if s]
+            
+            price_str = a.get("price", "0")
+            if isinstance(price_str, str):
+                price_str = price_str.replace(",", ".")
+            price = float(price_str) if price_str else 0.0
+            
             productos.append(Product(
                 song_id=0,
                 name=a.get("title"),
-                artist=a.get("artistId"),
-                release_date=f"{a.get('releaseDate')}T00:00:00Z",
+                artist=artist_id,
+                release_date=f"{a.get('releaseDate')}T00:00:00Z" if a.get('releaseDate') else None,
                 album_id=a.get("albumId"),
                 description=a.get("description"),
-                song_list=a.get("songs", []),
+                song_list=songs,
                 merch_id=0,
                 duration=0,
                 cover=a.get("cover"),
-                price=a.get("price"),
-                genre=a.get("genres", [0])[0] if a.get("genres") else 0,
-                colaborators=a.get("collaborators", [])
+                price=price,
+                genre=genre,
+                colaborators=collaborators
             ))
 
         # --- Mapear merch ---
         for m in merch:
+            # Convertir strings a tipos correctos
+            artist_id = m.get("artistId")
+            if isinstance(artist_id, str):
+                artist_id = int(artist_id) if artist_id else 0
+            
+            collaborators = m.get("collaborators", [])
+            if collaborators and isinstance(collaborators[0], str):
+                collaborators = [int(col) for col in collaborators if col]
+            
+            price_str = m.get("price", "0")
+            if isinstance(price_str, str):
+                price_str = price_str.replace(",", ".")
+            price = float(price_str) if price_str else 0.0
+            
             productos.append(Product(
                 song_id=0,
                 name=m.get("title"),
-                artist=m.get("artistId"),
-                release_date=f"{m.get('releaseDate')}T00:00:00Z",
+                artist=artist_id,
+                release_date=f"{m.get('releaseDate')}T00:00:00Z" if m.get('releaseDate') else None,
                 album_id=0,
                 description=m.get("description"),
                 song_list=[],
                 merch_id=m.get("merchId"),
                 duration=0,
                 cover=m.get("cover"),
-                price=m.get("price"),
+                price=price,
                 genre=None,  # Merch no tiene género en TyA
-                colaborators=m.get("collaborators", [])
+                colaborators=collaborators
             ))
 
         # --- Aplicar paginación ---
@@ -365,7 +449,14 @@ def show_storefront_products(page=1, limit=20):
                 headers={"Accept": "application/json"}
             )
             if artist_ids_response.ok:
-                artist_ids = [item.get("artistId") for item in artist_ids_response.json() if item.get("artistId")]
+                data = artist_ids_response.json()
+                artist_ids = []
+                if data and len(data) > 0:
+                    # Verificar si es lista de enteros o lista de objetos
+                    if isinstance(data[0], int):
+                        artist_ids = data
+                    elif isinstance(data[0], dict):
+                        artist_ids = [item.get("artistId") for item in data if item.get("artistId")]
                 
                 # Obtener detalles completos de artistas
                 if artist_ids:
