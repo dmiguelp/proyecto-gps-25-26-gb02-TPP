@@ -338,14 +338,17 @@ components:
           type: integer
           description: ID of the Song (NULL if not song)
           example: 0
+          nullable: true
         albumId:
           type: integer
           description: ID of the Album (NULL if not album)
           example: 0
+          nullable: true
         merchId:
           type: integer
           description: ID of the Merch (NULL if not merch)
           example: 0
+          nullable: true
         name:
           type: string
           description: Name of the product
@@ -382,10 +385,12 @@ components:
           description: Duration of song in seconds (null if not a song)
           format: int32
           example: 10
+          nullable: true
         genre:
           type: integer
           description: ID of the primary genre of a song (null if not song or album)
           example: 0
+          nullable: true
         cover:
           type: string
           description: base64 image of the cover
@@ -397,6 +402,7 @@ components:
           - Album 1
           - Album 2
           - Album 3
+          nullable: true
           items:
             type: integer
       description: "A product on the store, that can be either a song, album or merch."
@@ -514,15 +520,19 @@ components:
         songId:
           type: integer
           description: ID of the song to add.
+          nullable: true
         albumId:
           type: integer
           description: ID of the album to add.
+          nullable: true
         merchId:
           type: integer
-          description: ID of the merch to add. 
+          description: ID of the merch to add.
+          nullable: true
         unidades:
           type: integer
           description: Quantity of items to add (only if merch)
+          nullable: true
 
   securitySchemes:
     oversound_auth:

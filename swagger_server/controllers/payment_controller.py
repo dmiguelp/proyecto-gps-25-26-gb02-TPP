@@ -92,23 +92,32 @@ def add_payment_method(body=None):
         Utiliza RETURNING en INSERT para obtener el ID del método creado,
         característica específica de PostgreSQL.
     """
+    print("[DEBUG] add_payment_method: Inicio de la función")
     db_conexion = None
     try:
+        print("[DEBUG] add_payment_method: Verificando si la petición es JSON")
         if not connexion.request.is_json:
-            return Error(code="400", message="El cuerpo de la petición no es JSON"), 400
+            print("[DEBUG] add_payment_method: ERROR - La petición no es JSON")
+            return Error(code="400", message="El cuerpo de la petición no es JSON").to_dict(), 400
         body = PaymentMethod.from_dict(connexion.request.get_json())
+        print(f"[DEBUG] add_payment_method: Body parseado correctamente")
 
         # Obtener user_id del contexto (ya validado por check_oversound_auth)
+        print("[DEBUG] add_payment_method: Obteniendo user_id del contexto")
         user_info = connexion.context.get('token_info')
-        user_id = user_info.get('id')
+        user_id = user_info.get('userId') or user_info.get('id')
+        print(f"[DEBUG] add_payment_method: user_id obtenido = {user_id}")
 
 
         # Conexión a la base de datos
+        print("[DEBUG] add_payment_method: Conectando a la base de datos")
         db_conexion = dbConectar()
         cursor = db_conexion.cursor()
+        print("[DEBUG] add_payment_method: Conexión establecida")
 
         id_metodo = None
         # Crear el método de pago
+        print("[DEBUG] add_payment_method: Insertando método de pago en la BD")
         cursor.execute(
             """
             INSERT INTO MetodosPago (numeroTarjeta, mesValidez, anioVlidez, nombreTarjeta)
@@ -119,11 +128,14 @@ def add_payment_method(body=None):
         )
         result = cursor.fetchone()
         if not result:
+            print("[DEBUG] add_payment_method: ERROR - No se obtuvo ID del método de pago")
             db_conexion.rollback()
-            return Error(code="500", message="No se pudo crear el método de pago"), 500
+            return Error(code="500", message="No se pudo crear el método de pago").to_dict(), 500
         id_metodo = result[0]
+        print(f"[DEBUG] add_payment_method: Método de pago creado con ID = {id_metodo}")
 
         # Asociar usuario con método de pago
+        print(f"[DEBUG] add_payment_method: Asociando usuario {user_id} con método {id_metodo}")
         cursor.execute(
             """
             INSERT INTO UsuariosMetodosPago (idUsuario, idMetodoPago)
@@ -132,16 +144,20 @@ def add_payment_method(body=None):
             (user_id, id_metodo)
         )
         
+        print("[DEBUG] add_payment_method: Haciendo commit de la transacción")
         db_conexion.commit()
         cursor.close()
+        print("[DEBUG] add_payment_method: Método de pago añadido exitosamente")
 
         return {"message": f"Método de pago agregado con id {id_metodo}", "userId": user_id}, 200
 
     except Exception as e:
         if db_conexion:
             db_conexion.rollback()
-        print("Error al añadir método de pago:", e)
-        return Error(code="500", message=str(e)), 500
+        print(f"[DEBUG] add_payment_method: EXCEPCIÓN - {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return Error(code="500", message=str(e)).to_dict(), 500
 
     finally:
         if db_conexion:
@@ -182,39 +198,52 @@ def delete_payment_method(paymentMethodId):
         La validación de propiedad previene que usuarios eliminen métodos de pago
         de otros usuarios, mejorando la seguridad del sistema.
     """
+    print("[DEBUG] delete_payment_method: Inicio de la función")
     db_conexion = None
     try:
         # Obtener user_id del contexto (ya validado por check_oversound_auth)
+        print("[DEBUG] delete_payment_method: Obteniendo user_id del contexto")
         user_info = connexion.context.get('token_info')
-        user_id = user_info.get('id')
+        user_id = user_info.get('userId') or user_info.get('id')
+        print(f"[DEBUG] delete_payment_method: user_id obtenido = {user_id}, paymentMethodId = {paymentMethodId}")
 
+        print("[DEBUG] delete_payment_method: Conectando a la base de datos")
         db_conexion = dbConectar()
         cursor = db_conexion.cursor()
+        print("[DEBUG] delete_payment_method: Conexión establecida")
 
         # Verificar que el método de pago pertenece al usuario autenticado
+        print(f"[DEBUG] delete_payment_method: Verificando que método {paymentMethodId} pertenece a usuario {user_id}")
         cursor.execute(
             "SELECT 1 FROM UsuariosMetodosPago WHERE idMetodoPago = %s AND idUsuario = %s",
             (paymentMethodId, user_id)
         )
         if not cursor.fetchone():
-            return Error(code="404", message="Método de pago no encontrado o no pertenece al usuario"), 404
+            print(f"[DEBUG] delete_payment_method: ERROR - Método de pago no encontrado o no pertenece al usuario")
+            return Error(code="404", message="Método de pago no encontrado o no pertenece al usuario").to_dict(), 404
 
         # Eliminar la asociación usuario-método
+        print(f"[DEBUG] delete_payment_method: Eliminando asociación usuario-método")
         cursor.execute("DELETE FROM UsuariosMetodosPago WHERE idMetodoPago = %s AND idUsuario = %s",
                       (paymentMethodId, user_id))
         
         # Eliminar el método de pago
+        print(f"[DEBUG] delete_payment_method: Eliminando método de pago")
         cursor.execute("DELETE FROM MetodosPago WHERE idMetodoPago = %s", (paymentMethodId,))
         
+        print("[DEBUG] delete_payment_method: Haciendo commit de la transacción")
         db_conexion.commit()
         cursor.close()
+        print("[DEBUG] delete_payment_method: Método de pago eliminado exitosamente")
         return {"message": "Método de pago eliminado correctamente"}, 200
 
     except Exception as e:
         if db_conexion:
             db_conexion.rollback()
-        print("Error al eliminar método de pago:", e)
-        return Error(code="500", message=str(e)), 500
+        print(f"[DEBUG] delete_payment_method: EXCEPCIÓN - {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return Error(code="500", message=str(e)).to_dict(), 500
 
     finally:
         if db_conexion:
@@ -282,7 +311,7 @@ def show_user_payment_methods():
     try:
         # Obtener user_id del contexto (ya validado por check_oversound_auth)
         user_info = connexion.context.get('token_info')
-        user_id = user_info.get('id')
+        user_id = user_info.get('userId') or user_info.get('id')
 
         # Consultar la base de datos con el user_id
         db_conexion = dbConectar()
@@ -317,8 +346,10 @@ def show_user_payment_methods():
         return [m.to_dict() for m in metodos], 200
 
     except Exception as e:
-        print("Error al obtener métodos de pago:", e)
-        return Error(code="500", message=str(e)), 500
+        print(f"[DEBUG] get_payment_methods: EXCEPCIÓN - {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return Error(code="500", message=str(e)).to_dict(), 500
 
     finally:
         if db_conexion:

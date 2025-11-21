@@ -395,5 +395,7 @@ def show_storefront_products(page=1, limit=20):
         }
 
     except Exception as e:
-        print(f"Error general al obtener los productos: {e}")
-        return Error(code="500", message=str(e)), 500
+        print(f"[DEBUG] get_store_products: EXCEPCIÓN - {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return Error(code="500", message=str(e)).to_dict(), 500

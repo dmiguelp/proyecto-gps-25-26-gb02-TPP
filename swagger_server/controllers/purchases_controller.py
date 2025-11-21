@@ -131,31 +131,43 @@ def set_purchase(body=None):
         - Implementar sistema de inventario/stock para merch
         - Enviar notificación/email de confirmación
     """
+    print("[DEBUG] create_purchase: Inicio de la función")
     db_conexion = None
     try:
         # Verifica que el cuerpo sea JSON
+        print("[DEBUG] create_purchase: Verificando si la petición es JSON")
         if not connexion.request.is_json:
-            return Error(code="400", message="El cuerpo de la petición no es JSON"), 400
+            print("[DEBUG] create_purchase: ERROR - La petición no es JSON")
+            return Error(code="400", message="El cuerpo de la petición no es JSON").to_dict(), 400
         body = Purchase.from_dict(connexion.request.get_json())
+        print(f"[DEBUG] create_purchase: Body parseado correctamente")
 
         # Obtener user_id del contexto (ya validado por check_oversound_auth)
+        print("[DEBUG] create_purchase: Obteniendo user_id del contexto")
         user_info = connexion.context.get('token_info')
-        user_id = user_info.get('id')
+        user_id = user_info.get('userId') or user_info.get('id')
+        print(f"[DEBUG] create_purchase: user_id obtenido = {user_id}")
 
         # Conexión con la base de datos
+        print("[DEBUG] create_purchase: Conectando a la base de datos")
         db_conexion = dbConectar()
         cursor = db_conexion.cursor()
+        print("[DEBUG] create_purchase: Conexión establecida")
         
         # --- VALIDAR QUE EL MÉTODO DE PAGO PERTENECE AL USUARIO ---
+        print(f"[DEBUG] create_purchase: Validando método de pago {body.payment_method_id} para usuario {user_id}")
         cursor.execute(
             "SELECT 1 FROM UsuariosMetodosPago WHERE idMetodoPago = %s AND idUsuario = %s",
             (body.payment_method_id, user_id)
         )
         if not cursor.fetchone():
-            return Error(code="403", message="El método de pago no pertenece al usuario o no existe"), 403
+            print("[DEBUG] create_purchase: ERROR - El método de pago no pertenece al usuario")
+            return Error(code="403", message="El método de pago no pertenece al usuario o no existe").to_dict(), 403
+        print("[DEBUG] create_purchase: Método de pago validado correctamente")
         # --- VALIDAR MÉTODO DE PAGO ---
         
         # Inserta la compra
+        print(f"[DEBUG] create_purchase: Insertando compra en BD - importe={body.purchase_price}, fecha={body.purchase_date}")
         cursor.execute(
             """
             INSERT INTO Compras (idUsuario, importe, fecha, metodoPago)
@@ -166,9 +178,11 @@ def set_purchase(body=None):
         )
         result = cursor.fetchone()
         if not result:
+            print("[DEBUG] create_purchase: ERROR - No se obtuvo ID de la compra")
             db_conexion.rollback()
-            return Error(code="500", message="No se pudo registrar la compra"), 500
+            return Error(code="500", message="No se pudo registrar la compra").to_dict(), 500
         id_compra = result[0]
+        print(f"[DEBUG] create_purchase: Compra registrada con ID = {id_compra}")
 
         # Registrar los productos de la compra en las tablas intermedias
         if body.song_ids:
@@ -233,16 +247,20 @@ def set_purchase(body=None):
             print(f"Advertencia: Error al limpiar carrito del usuario {user_id}: {e}")
         # --- FIN LIMPIEZA DE CARRITO ---
 
+        print("[DEBUG] create_purchase: Haciendo commit de la transacción")
         db_conexion.commit()
         cursor.close()
+        print(f"[DEBUG] create_purchase: Compra registrada exitosamente con ID {id_compra}")
 
         return {"message": f"Compra registrada con id {id_compra}", "userId": user_id}, 200
 
     except Exception as e:
         if db_conexion:
             db_conexion.rollback()
-        print("Error al registrar la compra:", e)
-        return Error(code="500", message=str(e)), 500
+        print(f"[DEBUG] create_purchase: EXCEPCIÓN - {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return Error(code="500", message=str(e)).to_dict(), 500
 
     finally:
         if db_conexion:

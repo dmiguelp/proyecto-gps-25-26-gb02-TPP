@@ -79,55 +79,87 @@ def add_to_cart(body=None):
     Note:
         La transacción se realiza con rollback automático en caso de error.
     """
+    print("[DEBUG] add_to_cart: Inicio de la función")
     db_conexion = None
     try:
+        print(f"[DEBUG] add_to_cart: Verificando si la petición es JSON")
         if not connexion.request.is_json:
-            return Error(code="400", message="El cuerpo de la petición no es JSON"), 400
+            print("[DEBUG] add_to_cart: ERROR - La petición no es JSON")
+            return Error(code="400", message="El cuerpo de la petición no es JSON").to_dict(), 400
+        
+        print(f"[DEBUG] add_to_cart: Parseando body desde JSON")
         body = CartBody.from_dict(connexion.request.get_json())
+        print(f"[DEBUG] add_to_cart: Body parseado - song_id={body.song_id}, album_id={body.album_id}, merch_id={body.merch_id}")
 
         # Obtener user_id del contexto (ya validado por check_oversound_auth)
+        print("[DEBUG] add_to_cart: Obteniendo user_id del contexto")
+        print(f"[DEBUG] add_to_cart: connexion.context completo = {connexion.context}")
         user_info = connexion.context.get('token_info')
-        user_id = user_info.get('id')
+        print(f"[DEBUG] add_to_cart: user_info del contexto = {user_info}")
+        if user_info is None:
+            print("[DEBUG] add_to_cart: ERROR CRÍTICO - user_info es None")
+            return Error(code="401", message="No se pudo obtener información del usuario autenticado").to_dict(), 401
+        user_id = user_info.get('userId') or user_info.get('id')
+        print(f"[DEBUG] add_to_cart: user_id obtenido = {user_id}")
 
+        print("[DEBUG] add_to_cart: Conectando a la base de datos")
         db_conexion = dbConectar()
         cursor = db_conexion.cursor()
+        print("[DEBUG] add_to_cart: Conexión establecida")
 
         if body.song_id:
+            print(f"[DEBUG] add_to_cart: Procesando canción con ID {body.song_id}")
             cursor.execute("SELECT 1 FROM CancionesCarrito WHERE idCancion = %s AND idUsuario = %s",
                            (body.song_id, user_id))
             if cursor.fetchone():
-                return Error(code="400", message="La canción ya está en el carrito"), 400
+                print(f"[DEBUG] add_to_cart: ERROR - La canción {body.song_id} ya está en el carrito")
+                return Error(code="400", message="La canción ya está en el carrito").to_dict(), 400
+            print(f"[DEBUG] add_to_cart: Insertando canción en el carrito")
             cursor.execute("INSERT INTO CancionesCarrito (idCancion, idUsuario) VALUES (%s, %s)",
                            (body.song_id, user_id))
+            print(f"[DEBUG] add_to_cart: Canción insertada correctamente")
 
         elif body.album_id:
+            print(f"[DEBUG] add_to_cart: Procesando álbum con ID {body.album_id}")
             cursor.execute("SELECT 1 FROM AlbumesCarrito WHERE idAlbum = %s AND idUsuario = %s",
                            (body.album_id, user_id))
             if cursor.fetchone():
-                return Error(code="400", message="El álbum ya está en el carrito"), 400
+                print(f"[DEBUG] add_to_cart: ERROR - El álbum {body.album_id} ya está en el carrito")
+                return Error(code="400", message="El álbum ya está en el carrito").to_dict(), 400
+            print(f"[DEBUG] add_to_cart: Insertando álbum en el carrito")
             cursor.execute("INSERT INTO AlbumesCarrito (idAlbum, idUsuario) VALUES (%s, %s)",
                            (body.album_id, user_id))
+            print(f"[DEBUG] add_to_cart: Álbum insertado correctamente")
 
         elif body.merch_id:
+            print(f"[DEBUG] add_to_cart: Procesando merch con ID {body.merch_id}, unidades={body.unidades}")
             cursor.execute("SELECT 1 FROM MerchCarrito WHERE idMerch = %s AND idUsuario = %s",
                            (body.merch_id, user_id))
             if cursor.fetchone():
-                return Error(code="400", message="El artículo ya está en el carrito"), 400
+                print(f"[DEBUG] add_to_cart: ERROR - El merch {body.merch_id} ya está en el carrito")
+                return Error(code="400", message="El artículo ya está en el carrito").to_dict(), 400
+            print(f"[DEBUG] add_to_cart: Insertando merch en el carrito")
             cursor.execute("INSERT INTO MerchCarrito (idMerch, idUsuario, unidades) VALUES (%s, %s, %s)",
                            (body.merch_id, user_id, body.unidades))
+            print(f"[DEBUG] add_to_cart: Merch insertado correctamente")
 
         else:
-            return Error(code="400", message="Debes proporcionar songId, albumId o merchId"), 400
+            print("[DEBUG] add_to_cart: ERROR - No se proporcionó songId, albumId ni merchId")
+            return Error(code="400", message="Debes proporcionar songId, albumId o merchId").to_dict(), 400
         
+        print("[DEBUG] add_to_cart: Haciendo commit de la transacción")
         db_conexion.commit()
         cursor.close()
+        print("[DEBUG] add_to_cart: Producto añadido exitosamente")
         return {"message": "Producto añadido al carrito correctamente"}, 200
 
     except Exception as e:
         if db_conexion:
             db_conexion.rollback()
-        print("Error al añadir al carrito:", e)
-        return Error(code="500", message=str(e)), 500
+        print(f"[DEBUG] add_to_cart: EXCEPCIÓN - {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return Error(code="500", message=str(e)).to_dict(), 500
 
     finally:
         if db_conexion:
@@ -176,14 +208,19 @@ def get_cart_products():
         Realiza múltiples peticiones HTTP síncronas. Para carritos grandes,
         considerar implementación con peticiones asíncronas o batch.
     """
+    print("[DEBUG] get_cart_products: Inicio de la función")
     db_conexion = None
     try:
         # Obtener user_id del contexto (ya validado por check_oversound_auth)
+        print("[DEBUG] get_cart_products: Obteniendo user_id del contexto")
         user_info = connexion.context.get('token_info')
-        user_id = user_info.get('id')
+        user_id = user_info.get('userId') or user_info.get('id')
+        print(f"[DEBUG] get_cart_products: user_id obtenido = {user_id}")
 
+        print("[DEBUG] get_cart_products: Conectando a la base de datos")
         db_conexion = dbConectar()
         cursor = db_conexion.cursor()
+        print("[DEBUG] get_cart_products: Conexión establecida")
 
         canciones = []
         albumes = []
@@ -191,6 +228,7 @@ def get_cart_products():
         productos = []
         
         # Canciones
+        print("[DEBUG] get_cart_products: Consultando canciones en el carrito")
         cursor.execute("""
             SELECT c.idCancion
             FROM CancionesCarrito c
@@ -198,8 +236,10 @@ def get_cart_products():
         """, (user_id,))
         for row in cursor.fetchall():
             canciones.append(row[0])
+        print(f"[DEBUG] get_cart_products: {len(canciones)} canciones encontradas: {canciones}")
             
         # Álbumes
+        print("[DEBUG] get_cart_products: Consultando álbumes en el carrito")
         cursor.execute("""
             SELECT a.idAlbum
             FROM AlbumesCarrito a
@@ -207,8 +247,10 @@ def get_cart_products():
         """, (user_id,))
         for row in cursor.fetchall():
             albumes.append(row[0])
+        print(f"[DEBUG] get_cart_products: {len(albumes)} álbumes encontrados: {albumes}")
 
         # Merch
+        print("[DEBUG] get_cart_products: Consultando merch en el carrito")
         cursor.execute("""
             SELECT m.idMerch, m.unidades
             FROM MerchCarrito m
@@ -216,11 +258,15 @@ def get_cart_products():
         """, (user_id,))
         for row in cursor.fetchall():
             merchs.append((row[0], row[1]))
+        print(f"[DEBUG] get_cart_products: {len(merchs)} items de merch encontrados: {merchs}")
 
         # Resolvemos IDs de canciones, albumes y merch usando el microservicio TyA.
+        print(f"[DEBUG] get_cart_products: Resolviendo información de productos desde TyA ({TYA_SERVICE_URL})")
         for cancion_id in canciones:
             try:
+                print(f"[DEBUG] get_cart_products: Obteniendo canción {cancion_id} desde TyA")
                 response = requests.get(f"{TYA_SERVICE_URL}/song/{cancion_id}", timeout=3)
+                print(f"[DEBUG] get_cart_products: Respuesta de TyA para canción {cancion_id}: status={response.status_code}")
                 if response.status_code == 200:
                     producto_data = response.json()
                     producto_schema = Product()
@@ -236,12 +282,15 @@ def get_cart_products():
                     producto_schema.release_date = producto_data.get("releaseDate")
                     producto_schema.album_id = producto_data.get("albumId")
                     productos.append(producto_schema)
+                    print(f"[DEBUG] get_cart_products: Canción {cancion_id} añadida a productos")
             except Exception as e:
-                print(f"Error al obtener canción {cancion_id}: {e}")
+                print(f"[DEBUG] get_cart_products: ERROR al obtener canción {cancion_id}: {type(e).__name__}: {e}")
 
         for album_id in albumes:
             try:
+                print(f"[DEBUG] get_cart_products: Obteniendo álbum {album_id} desde TyA")
                 response = requests.get(f"{TYA_SERVICE_URL}/album/{album_id}", timeout=3)
+                print(f"[DEBUG] get_cart_products: Respuesta de TyA para álbum {album_id}: status={response.status_code}")
                 if response.status_code == 200:
                     producto_data = response.json()
                     producto_schema = Product()
@@ -256,13 +305,16 @@ def get_cart_products():
                     producto_schema.cover = producto_data.get("cover")
                     producto_schema.release_date = producto_data.get("releaseDate")
                     productos.append(producto_schema)
+                    print(f"[DEBUG] get_cart_products: Álbum {album_id} añadido a productos")
             except Exception as e:
-                print(f"Error al obtener álbum {album_id}: {e}")
+                print(f"[DEBUG] get_cart_products: ERROR al obtener álbum {album_id}: {type(e).__name__}: {e}")
 
         for merch_tuple in merchs:
             merch_id = merch_tuple[0]  # El primer elemento es el ID
             try:
+                print(f"[DEBUG] get_cart_products: Obteniendo merch {merch_id} desde TyA")
                 response = requests.get(f"{TYA_SERVICE_URL}/merch/{merch_id}", timeout=3)
+                print(f"[DEBUG] get_cart_products: Respuesta de TyA para merch {merch_id}: status={response.status_code}")
                 if response.status_code == 200:
                     producto_data = response.json()
                     producto_schema = Product()
@@ -276,15 +328,19 @@ def get_cart_products():
                     producto_schema.cover = producto_data.get("cover")
                     producto_schema.release_date = producto_data.get("releaseDate")
                     productos.append(producto_schema)
+                    print(f"[DEBUG] get_cart_products: Merch {merch_id} añadido a productos")
             except Exception as e:
-                print(f"Error al obtener merch {merch_id}: {e}")
+                print(f"[DEBUG] get_cart_products: ERROR al obtener merch {merch_id}: {type(e).__name__}: {e}")
 
         cursor.close()
+        print(f"[DEBUG] get_cart_products: Total de productos a retornar: {len(productos)}")
         return [p.to_dict() for p in productos], 200
 
     except Exception as e:
-        print("Error al obtener productos del carrito:", e)
-        return Error(code="500", message=str(e)), 500
+        print(f"[DEBUG] get_cart_products: EXCEPCIÓN - {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return Error(code="500", message=str(e)).to_dict(), 500
     finally:
         if db_conexion:
             dbDesconectar(db_conexion)
@@ -343,7 +399,7 @@ def remove_from_cart(productId, type=None):
         # --- VERIFICAR TOKEN ---
         # Obtener user_id del contexto (ya validado por check_oversound_auth)
         user_info = connexion.context.get('token_info')
-        user_id = user_info.get('id')
+        user_id = user_info.get('userId') or user_info.get('id')
         # --- VERIFICAR TOKEN ---
 
         # Eliminar producto del carrito del usuario autenticado
@@ -375,14 +431,14 @@ def remove_from_cart(productId, type=None):
                     deleted = True
             
             if not deleted:
-                return Error(code="404", message="El producto no está en el carrito"), 404
+                return Error(code="404", message="El producto no está en el carrito").to_dict(), 404
         
         elif type == "song" or type == "0":
             # Verificar que la canción existe en el carrito del usuario
             cursor.execute("SELECT 1 FROM CancionesCarrito WHERE idCancion = %s AND idUsuario = %s",
                            (productId, user_id))
             if not cursor.fetchone():
-                return Error(code="404", message="La canción no está en el carrito"), 404
+                return Error(code="404", message="La canción no está en el carrito").to_dict(), 404
             
             cursor.execute("DELETE FROM CancionesCarrito WHERE idCancion = %s AND idUsuario = %s",
                            (productId, user_id))
@@ -391,7 +447,7 @@ def remove_from_cart(productId, type=None):
             cursor.execute("SELECT 1 FROM AlbumesCarrito WHERE idAlbum = %s AND idUsuario = %s",
                            (productId, user_id))
             if not cursor.fetchone():
-                return Error(code="404", message="El álbum no está en el carrito"), 404
+                return Error(code="404", message="El álbum no está en el carrito").to_dict(), 404
             
             cursor.execute("DELETE FROM AlbumesCarrito WHERE idAlbum = %s AND idUsuario = %s",
                            (productId, user_id))
@@ -400,12 +456,12 @@ def remove_from_cart(productId, type=None):
             cursor.execute("SELECT 1 FROM MerchCarrito WHERE idMerch = %s AND idUsuario = %s",
                            (productId, user_id))
             if not cursor.fetchone():
-                return Error(code="404", message="El artículo no está en el carrito"), 404
+                return Error(code="404", message="El artículo no está en el carrito").to_dict(), 404
             
             cursor.execute("DELETE FROM MerchCarrito WHERE idMerch = %s AND idUsuario = %s",
                            (productId, user_id))
         else:
-            return Error(code="400", message="Tipo de producto inválido"), 400
+            return Error(code="400", message="Tipo de producto inválido").to_dict(), 400
     
         db_conexion.commit()
         cursor.close()
@@ -415,8 +471,10 @@ def remove_from_cart(productId, type=None):
     except Exception as e:
         if db_conexion:
             db_conexion.rollback()
-        print("Error al eliminar del carrito:", e)
-        return Error(code="500", message=str(e)), 500
+        print(f"[DEBUG] remove_from_cart: EXCEPCIÓN - {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return Error(code="500", message=str(e)).to_dict(), 500
 
     finally:
         if db_conexion:
