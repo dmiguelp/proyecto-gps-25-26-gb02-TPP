@@ -433,6 +433,10 @@ components:
       - expireYear
       type: object
       properties:
+        id:
+          type: integer
+          description: Unique identifier of the payment method.
+          example: 1
         cardNumber:
           type: string
           description: Masked card number.
@@ -453,6 +457,7 @@ components:
           example: John Doe
       description: A simple Payment Method object for storing card details.
       example:
+        id: 1
         expireMonth: 12
         cardHolder: John Doe
         expireYear: 2030

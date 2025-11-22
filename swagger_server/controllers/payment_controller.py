@@ -118,13 +118,15 @@ def add_payment_method(body=None):
         id_metodo = None
         # Crear el método de pago
         print("[DEBUG] add_payment_method: Insertando método de pago en la BD")
+        # Limpiar el número de tarjeta: remover espacios y convertir a int
+        card_number_clean = int(body.card_number.replace(" ", ""))
         cursor.execute(
             """
             INSERT INTO MetodosPago (numeroTarjeta, mesValidez, anioVlidez, nombreTarjeta)
             VALUES (%s, %s, %s, %s)
             RETURNING idMetodoPago
             """,
-            (body.card_number, body.expire_month, body.expire_year, body.card_holder)
+            (card_number_clean, body.expire_month, body.expire_year, body.card_holder)
         )
         result = cursor.fetchone()
         if not result:
@@ -164,7 +166,7 @@ def add_payment_method(body=None):
             dbDesconectar(db_conexion)
 
 
-def delete_payment_method(paymentMethodId):
+def delete_payment_method(payment_method_id):
     """
     Elimina un método de pago por su ID.
     
@@ -205,7 +207,7 @@ def delete_payment_method(paymentMethodId):
         print("[DEBUG] delete_payment_method: Obteniendo user_id del contexto")
         user_info = connexion.context.get('token_info')
         user_id = user_info.get('userId') or user_info.get('id')
-        print(f"[DEBUG] delete_payment_method: user_id obtenido = {user_id}, paymentMethodId = {paymentMethodId}")
+        print(f"[DEBUG] delete_payment_method: user_id obtenido = {user_id}, payment_method_id = {payment_method_id}")
 
         print("[DEBUG] delete_payment_method: Conectando a la base de datos")
         db_conexion = dbConectar()
@@ -213,10 +215,10 @@ def delete_payment_method(paymentMethodId):
         print("[DEBUG] delete_payment_method: Conexión establecida")
 
         # Verificar que el método de pago pertenece al usuario autenticado
-        print(f"[DEBUG] delete_payment_method: Verificando que método {paymentMethodId} pertenece a usuario {user_id}")
+        print(f"[DEBUG] delete_payment_method: Verificando que método {payment_method_id} pertenece a usuario {user_id}")
         cursor.execute(
             "SELECT 1 FROM UsuariosMetodosPago WHERE idMetodoPago = %s AND idUsuario = %s",
-            (paymentMethodId, user_id)
+            (payment_method_id, user_id)
         )
         if not cursor.fetchone():
             print(f"[DEBUG] delete_payment_method: ERROR - Método de pago no encontrado o no pertenece al usuario")
@@ -225,11 +227,11 @@ def delete_payment_method(paymentMethodId):
         # Eliminar la asociación usuario-método
         print(f"[DEBUG] delete_payment_method: Eliminando asociación usuario-método")
         cursor.execute("DELETE FROM UsuariosMetodosPago WHERE idMetodoPago = %s AND idUsuario = %s",
-                      (paymentMethodId, user_id))
+                      (payment_method_id, user_id))
         
         # Eliminar el método de pago
         print(f"[DEBUG] delete_payment_method: Eliminando método de pago")
-        cursor.execute("DELETE FROM MetodosPago WHERE idMetodoPago = %s", (paymentMethodId,))
+        cursor.execute("DELETE FROM MetodosPago WHERE idMetodoPago = %s", (payment_method_id,))
         
         print("[DEBUG] delete_payment_method: Haciendo commit de la transacción")
         db_conexion.commit()
@@ -333,14 +335,17 @@ def show_user_payment_methods():
             """, (metodo_id,))
             tupla = cursor.fetchone()
             if tupla:
+                # Enmascarar el número de tarjeta: mostrar solo los últimos 4 dígitos
+                full_card = str(tupla[1])
+                masked_card = f"**** **** **** {full_card[-4:]}"
                 metodo = PaymentMethod(
-                    card_number=tupla[1],
+                    card_number=masked_card,
                     expire_month=tupla[2],
                     expire_year=tupla[3],
-                    card_holder=tupla[4]
+                    card_holder=tupla[4],
+                    id=tupla[0]
                 )
-                # Agregar id como atributo adicional
-                metodo.id = tupla[0]
+                # No need to add id as attribute since it's now a property
                 metodos.append(metodo)
         cursor.close()
         return [m.to_dict() for m in metodos], 200

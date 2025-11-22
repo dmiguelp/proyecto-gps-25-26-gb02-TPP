@@ -51,6 +51,7 @@ class PaymentMethod(Model):
     de seguridad PCI-DSS.
     
     Attributes:
+        id (int): Identificador único del método de pago. Requerido.
         card_number (str): Número de tarjeta enmascarado. 
                           Formato típico: "**** **** **** 1234"
                           Solo muestra últimos 4 dígitos. Requerido.
@@ -59,6 +60,7 @@ class PaymentMethod(Model):
         card_holder (str): Nombre del titular como aparece en la tarjeta. Requerido.
     
     JSON Mapping:
+        - id ↔ id
         - card_number ↔ cardNumber
         - expire_month ↔ expireMonth
         - expire_year ↔ expireYear
@@ -72,6 +74,7 @@ class PaymentMethod(Model):
     Examples:
         >>> # Crear método de pago
         >>> payment = PaymentMethod(
+        ...     id=1,
         ...     card_number="**** **** **** 1234",
         ...     expire_month=12,
         ...     expire_year=2025,
@@ -80,6 +83,7 @@ class PaymentMethod(Model):
         
         >>> # Deserializar desde JSON
         >>> data = {
+        ...     "id": 1,
         ...     "cardNumber": "**** **** **** 5678",
         ...     "expireMonth": 6,
         ...     "expireYear": 2026,
@@ -97,7 +101,7 @@ class PaymentMethod(Model):
         Este modelo es generado automáticamente por Swagger Codegen.
         La información de seguridad es crítica - revisar antes de modificar.
     """
-    def __init__(self, card_number: str=None, expire_month: int=None, expire_year: int=None, card_holder: str=None):  # noqa: E501
+    def __init__(self, id: int=None, card_number: str=None, expire_month: int=None, expire_year: int=None, card_holder: str=None):  # noqa: E501
         """
         Constructor del modelo PaymentMethod.
         
@@ -105,6 +109,7 @@ class PaymentMethod(Model):
         Configura los tipos de datos y el mapeo entre atributos Python y JSON.
         
         Args:
+            id (int): Unique identifier of the payment method.
             card_number (str): Número de tarjeta ENMASCARADO (ej: "**** **** **** 1234").
             expire_month (int): Mes de vencimiento (1-12).
             expire_year (int): Año de vencimiento (ej: 2025).
@@ -118,6 +123,7 @@ class PaymentMethod(Model):
             pero se vuelven obligatorios al usar los setters.
         """
         self.swagger_types = {
+            'id': int,
             'card_number': str,
             'expire_month': int,
             'expire_year': int,
@@ -125,11 +131,13 @@ class PaymentMethod(Model):
         }
 
         self.attribute_map = {
+            'id': 'id',
             'card_number': 'cardNumber',
             'expire_month': 'expireMonth',
             'expire_year': 'expireYear',
             'card_holder': 'cardHolder'
         }
+        self._id = id
         self._card_number = card_number
         self._expire_month = expire_month
         self._expire_year = expire_year
@@ -145,13 +153,14 @@ class PaymentMethod(Model):
         
         Args:
             dikt (dict): Diccionario con los datos del método de pago.
-                        Debe contener: cardNumber, expireMonth, expireYear, cardHolder.
+                        Debe contener: id, cardNumber, expireMonth, expireYear, cardHolder.
         
         Returns:
             PaymentMethod: Nueva instancia con los datos deserializados.
         
         Example:
             >>> data = {
+            ...     "id": 1,
             ...     "cardNumber": "**** **** **** 1234",
             ...     "expireMonth": 12,
             ...     "expireYear": 2025,
@@ -160,6 +169,29 @@ class PaymentMethod(Model):
             >>> payment = PaymentMethod.from_dict(data)
         """
         return util.deserialize_model(dikt, cls)
+
+    @property
+    def id(self) -> int:
+        """Gets the id of this PaymentMethod.
+
+        Unique identifier of the payment method.  # noqa: E501
+
+        :return: The id of this PaymentMethod.
+        :rtype: int
+        """
+        return self._id
+
+    @id.setter
+    def id(self, id: int):
+        """Sets the id of this PaymentMethod.
+
+        Unique identifier of the payment method.  # noqa: E501
+
+        :param id: The id of this PaymentMethod.
+        :type id: int
+        """
+
+        self._id = id
 
     @property
     def card_number(self) -> str:
