@@ -70,7 +70,7 @@ def set_purchase(body=None):
     Transaccionalidad:
         - Toda la operación se realiza en una transacción única
         - Si falla cualquier INSERT, se hace rollback completo
-        - Errores en productos individuales se registran pero no detienen el proceso
+        - La compra solo se registra si todos los productos se pueden asociar
     
     Validaciones:
         - Cuerpo debe ser JSON válido
@@ -114,9 +114,8 @@ def set_purchase(body=None):
             }
     
     Note:
-        - Los errores en productos individuales se capturan y registran sin detener el proceso
-        - Esto permite que la compra se complete aunque algún producto tenga problemas
-        - Considerar si esto es el comportamiento deseado o si debería ser todo-o-nada
+        - Si hay error al registrar algún producto, la compra falla completamente
+        - Esto asegura consistencia en la base de datos
     
     Database Schema:
         - Compras.metodoPago debe ser FK a MetodosPago.idMetodoPago
@@ -141,6 +140,7 @@ def set_purchase(body=None):
             return Error(code="400", message="El cuerpo de la petición no es JSON").to_dict(), 400
         body = Purchase.from_dict(connexion.request.get_json())
         print(f"[DEBUG] create_purchase: Body parseado correctamente")
+        print(f"[DEBUG] create_purchase: Body recibido: {body.to_dict() if hasattr(body, 'to_dict') else body.__dict__}")
 
         # Obtener user_id del contexto (ya validado por check_oversound_auth)
         print("[DEBUG] create_purchase: Obteniendo user_id del contexto")
@@ -183,37 +183,35 @@ def set_purchase(body=None):
             return Error(code="500", message="No se pudo registrar la compra").to_dict(), 500
         id_compra = result[0]
         print(f"[DEBUG] create_purchase: Compra registrada con ID = {id_compra}")
+        print(f"[DEBUG] create_purchase: Importe: {body.purchase_price}, Fecha: {body.purchase_date}, Método: {body.payment_method_id}")
 
         # Registrar los productos de la compra en las tablas intermedias
-        if body.song_ids:
-            for song_id in body.song_ids:
-                try:
-                    cursor.execute(
-                        "INSERT INTO CancionesCompra (idCompra, idCancion) VALUES (%s, %s)",
-                        (id_compra, song_id)
-                    )
-                except Exception as e:
-                    print(f"Error al registrar canción {song_id}: {e}")
+        body.song_ids = body.song_ids or []
+        body.album_ids = body.album_ids or []
+        body.merch_ids = body.merch_ids or []
+        print(f"[DEBUG] create_purchase: Song IDs: {body.song_ids}")
+        print(f"[DEBUG] create_purchase: Album IDs: {body.album_ids}")
+        print(f"[DEBUG] create_purchase: Merch IDs: {body.merch_ids}")
         
-        if body.album_ids:
-            for album_id in body.album_ids:
-                try:
-                    cursor.execute(
-                        "INSERT INTO AlbumesCompra (idCompra, idAlbum) VALUES (%s, %s)",
-                        (id_compra, album_id)
-                    )
-                except Exception as e:
-                    print(f"Error al registrar álbum {album_id}: {e}")
+        for song_id in body.song_ids:
+            cursor.execute(
+                "INSERT INTO CancionesCompra (idCompra, idCancion) VALUES (%s, %s)",
+                (id_compra, song_id)
+            )
         
-        if body.merch_ids:
-            for merch_id in body.merch_ids:
-                try:
-                    cursor.execute(
-                        "INSERT INTO MerchCompra (idCompra, idMerch) VALUES (%s, %s)",
-                        (id_compra, merch_id)
-                    )
-                except Exception as e:
-                    print(f"Error al registrar merch {merch_id}: {e}")
+        for album_id in body.album_ids:
+            cursor.execute(
+                "INSERT INTO AlbumesCompra (idCompra, idAlbum) VALUES (%s, %s)",
+                (id_compra, album_id)
+            )
+        
+        for merch_id in body.merch_ids:
+            cursor.execute(
+                "INSERT INTO MerchCompra (idCompra, idMerch) VALUES (%s, %s)",
+                (id_compra, merch_id)
+            )
+        
+        print(f"[DEBUG] create_purchase: Productos registrados para compra {id_compra}")
 
         # --- LIMPIAR CARRITO AUTOMÁTICAMENTE DESPUÉS DE COMPRA EXITOSA ---
         try:
