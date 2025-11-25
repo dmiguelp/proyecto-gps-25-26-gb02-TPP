@@ -325,11 +325,6 @@ components:
   schemas:
     Product:
       required:
-      - artist
-      - colaborators
-      - cover
-      - releaseDate
-      - description
       - name
       - price
       type: object
