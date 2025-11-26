@@ -374,9 +374,6 @@ class Product(Model):
         :param description: The description of this Product.
         :type description: str
         """
-        if description is None:
-            raise ValueError("Invalid value for `description`, must not be `None`")  # noqa: E501
-
         self._description = description
 
     @property
@@ -399,9 +396,6 @@ class Product(Model):
         :param artist: The artist of this Product.
         :type artist: int
         """
-        if artist is None:
-            raise ValueError("Invalid value for `artist`, must not be `None`")  # noqa: E501
-
         self._artist = artist
 
     @property
@@ -424,9 +418,6 @@ class Product(Model):
         :param colaborators: The colaborators of this Product.
         :type colaborators: List[int]
         """
-        if colaborators is None:
-            raise ValueError("Invalid value for `colaborators`, must not be `None`")  # noqa: E501
-
         self._colaborators = colaborators
 
     @property
@@ -518,9 +509,6 @@ class Product(Model):
         :param cover: The cover of this Product.
         :type cover: str
         """
-        if cover is None:
-            raise ValueError("Invalid value for `cover`, must not be `None`")  # noqa: E501
-
         self._cover = cover
 
     @property

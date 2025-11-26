@@ -104,6 +104,9 @@ def add_to_cart(body=None):
 
         print("[DEBUG] add_to_cart: Conectando a la base de datos")
         db_conexion = dbConectar()
+        if db_conexion is None:
+            print("[DEBUG] add_to_cart: ERROR - No se pudo conectar a la base de datos")
+            return Error(code="503", message="Error al conectar con la base de datos").to_dict(), 503
         cursor = db_conexion.cursor()
         print("[DEBUG] add_to_cart: Conexión establecida")
 
@@ -219,6 +222,9 @@ def get_cart_products():
 
         print("[DEBUG] get_cart_products: Conectando a la base de datos")
         db_conexion = dbConectar()
+        if db_conexion is None:
+            print("[DEBUG] get_cart_products: ERROR - No se pudo conectar a la base de datos")
+            return Error(code="503", message="Error al conectar con la base de datos").to_dict(), 503
         cursor = db_conexion.cursor()
         print("[DEBUG] get_cart_products: Conexión establecida")
 
@@ -404,6 +410,9 @@ def remove_from_cart(product_id, type=None):
 
         # Eliminar producto del carrito del usuario autenticado
         db_conexion = dbConectar()
+        if db_conexion is None:
+            print("[DEBUG] remove_from_cart: ERROR - No se pudo conectar a la base de datos")
+            return Error(code="503", message="Error al conectar con la base de datos").to_dict(), 503
         cursor = db_conexion.cursor()
 
         # Si no se especifica type, intentar eliminar de todas las tablas

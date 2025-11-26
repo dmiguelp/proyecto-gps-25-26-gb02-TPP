@@ -312,21 +312,21 @@ def show_storefront_products(page=1, limit=20):
                 price_str = price_str.replace(",", ".")
             price = float(price_str) if price_str else 0.0
             
-            productos.append(Product(
-                song_id=c.get("songId"),
-                name=c.get("title"),
-                artist=artist_id,
-                release_date=f"{c.get('releaseDate')}T00:00:00Z" if c.get('releaseDate') else None,
-                album_id=c.get("albumId"),
-                description=c.get("description"),
-                song_list=[],
-                merch_id=0,
-                duration=duration,
-                cover=c.get("cover"),
-                price=price,
-                genre=genre,
-                colaborators=collaborators
-            ))
+            productos.append({
+                'songId': c.get("songId"),
+                'albumId': c.get("albumId"),
+                'merchId': None,
+                'name': c.get("title"),
+                'price': price,
+                'description': c.get("description"),
+                'artist': artist_id,
+                'colaborators': collaborators,
+                'releaseDate': f"{c.get('releaseDate')}T00:00:00Z" if c.get('releaseDate') else None,
+                'duration': duration,
+                'genre': genre,
+                'cover': c.get("cover"),
+                'songList': None
+            })
 
         # --- Mapear álbumes ---
         for a in albumes:
@@ -353,21 +353,21 @@ def show_storefront_products(page=1, limit=20):
                 price_str = price_str.replace(",", ".")
             price = float(price_str) if price_str else 0.0
             
-            productos.append(Product(
-                song_id=0,
-                name=a.get("title"),
-                artist=artist_id,
-                release_date=f"{a.get('releaseDate')}T00:00:00Z" if a.get('releaseDate') else None,
-                album_id=a.get("albumId"),
-                description=a.get("description"),
-                song_list=songs,
-                merch_id=0,
-                duration=0,
-                cover=a.get("cover"),
-                price=price,
-                genre=genre,
-                colaborators=collaborators
-            ))
+            productos.append({
+                'songId': None,
+                'albumId': a.get("albumId"),
+                'merchId': None,
+                'name': a.get("title"),
+                'price': price,
+                'description': a.get("description"),
+                'artist': artist_id,
+                'colaborators': collaborators,
+                'releaseDate': f"{a.get('releaseDate')}T00:00:00Z" if a.get('releaseDate') else None,
+                'duration': None,
+                'genre': genre,
+                'cover': a.get("cover"),
+                'songList': songs
+            })
 
         # --- Mapear merch ---
         for m in merch:
@@ -385,21 +385,21 @@ def show_storefront_products(page=1, limit=20):
                 price_str = price_str.replace(",", ".")
             price = float(price_str) if price_str else 0.0
             
-            productos.append(Product(
-                song_id=0,
-                name=m.get("title"),
-                artist=artist_id,
-                release_date=f"{m.get('releaseDate')}T00:00:00Z" if m.get('releaseDate') else None,
-                album_id=0,
-                description=m.get("description"),
-                song_list=[],
-                merch_id=m.get("merchId"),
-                duration=0,
-                cover=m.get("cover"),
-                price=price,
-                genre=None,  # Merch no tiene género en TyA
-                colaborators=collaborators
-            ))
+            productos.append({
+                'songId': None,
+                'albumId': None,
+                'merchId': m.get("merchId"),
+                'name': m.get("title"),
+                'price': price,
+                'description': m.get("description"),
+                'artist': artist_id,
+                'colaborators': collaborators,
+                'releaseDate': f"{m.get('releaseDate')}T00:00:00Z" if m.get('releaseDate') else None,
+                'duration': None,
+                'genre': None,  # Merch no tiene género en TyA
+                'cover': m.get("cover"),
+                'songList': None
+            })
 
         # --- Aplicar paginación ---
         # Validar y ajustar parámetros de paginación
@@ -474,7 +474,7 @@ def show_storefront_products(page=1, limit=20):
         
         # --- Retornar respuesta con datos paginados, metadata y catálogos ---
         return {
-            "data": [p.to_dict() for p in productos_paginados],
+            "data": productos_paginados,
             "pagination": {
                 "page": page,
                 "limit": limit,
@@ -483,7 +483,7 @@ def show_storefront_products(page=1, limit=20):
             },
             "genres": all_genres,
             "artists": all_artists
-        }
+        }, 200
 
     except Exception as e:
         print(f"[DEBUG] get_store_products: EXCEPCIÓN - {type(e).__name__}: {str(e)}")

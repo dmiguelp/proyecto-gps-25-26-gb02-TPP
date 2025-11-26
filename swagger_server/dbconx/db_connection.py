@@ -2,7 +2,7 @@ import psycopg2 as DB
 from psycopg2.extensions import connection
 
 def dbConectar() -> connection:
-    ip = "pgnweb.ddns.net"
+    ip = "10.1.1.1"
     puerto = 5432
     basedatos = "tpp"
 

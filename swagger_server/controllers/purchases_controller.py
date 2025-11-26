@@ -151,6 +151,9 @@ def set_purchase(body=None):
         # Conexión con la base de datos
         print("[DEBUG] create_purchase: Conectando a la base de datos")
         db_conexion = dbConectar()
+        if db_conexion is None:
+            print("[DEBUG] create_purchase: ERROR - No se pudo conectar a la base de datos")
+            return Error(code="503", message="Error al conectar con la base de datos").to_dict(), 503
         cursor = db_conexion.cursor()
         print("[DEBUG] create_purchase: Conexión establecida")
         
@@ -214,35 +217,56 @@ def set_purchase(body=None):
         print(f"[DEBUG] create_purchase: Productos registrados para compra {id_compra}")
 
         # --- LIMPIAR CARRITO AUTOMÁTICAMENTE DESPUÉS DE COMPRA EXITOSA ---
+        # IMPORTANTE: Solo limpiamos si el frontend envió IDs. Si las listas están vacías,
+        # significa que el frontend no está enviando los productos correctamente.
         try:
+            total_deleted = 0
+            
             # Eliminar canciones del carrito
             if body.song_ids:
+                print(f"[DEBUG] create_purchase: Eliminando {len(body.song_ids)} canciones del carrito: {body.song_ids}")
                 for song_id in body.song_ids:
                     cursor.execute(
                         "DELETE FROM CancionesCarrito WHERE idCancion = %s AND idUsuario = %s",
                         (song_id, user_id)
                     )
+                    total_deleted += cursor.rowcount
+            else:
+                print(f"[DEBUG] create_purchase: ADVERTENCIA - No hay song_ids para eliminar del carrito")
             
             # Eliminar álbumes del carrito
             if body.album_ids:
+                print(f"[DEBUG] create_purchase: Eliminando {len(body.album_ids)} álbumes del carrito: {body.album_ids}")
                 for album_id in body.album_ids:
                     cursor.execute(
                         "DELETE FROM AlbumesCarrito WHERE idAlbum = %s AND idUsuario = %s",
                         (album_id, user_id)
                     )
+                    total_deleted += cursor.rowcount
+            else:
+                print(f"[DEBUG] create_purchase: ADVERTENCIA - No hay album_ids para eliminar del carrito")
             
             # Eliminar merchandising del carrito
             if body.merch_ids:
+                print(f"[DEBUG] create_purchase: Eliminando {len(body.merch_ids)} items de merch del carrito: {body.merch_ids}")
                 for merch_id in body.merch_ids:
                     cursor.execute(
                         "DELETE FROM MerchCarrito WHERE idMerch = %s AND idUsuario = %s",
                         (merch_id, user_id)
                     )
+                    total_deleted += cursor.rowcount
+            else:
+                print(f"[DEBUG] create_purchase: ADVERTENCIA - No hay merch_ids para eliminar del carrito")
             
-            print(f"Carrito limpiado automáticamente para usuario {user_id} después de compra {id_compra}")
+            if total_deleted > 0:
+                print(f"[DEBUG] create_purchase: Carrito limpiado - {total_deleted} productos eliminados")
+            else:
+                print(f"[DEBUG] create_purchase: ADVERTENCIA - No se eliminó ningún producto del carrito (listas vacías o productos no encontrados)")
         except Exception as e:
             # El error al limpiar el carrito no debe impedir que la compra se registre
-            print(f"Advertencia: Error al limpiar carrito del usuario {user_id}: {e}")
+            print(f"[DEBUG] create_purchase: ERROR al limpiar carrito del usuario {user_id}: {e}")
+            import traceback
+            traceback.print_exc()
         # --- FIN LIMPIEZA DE CARRITO ---
 
         print("[DEBUG] create_purchase: Haciendo commit de la transacción")

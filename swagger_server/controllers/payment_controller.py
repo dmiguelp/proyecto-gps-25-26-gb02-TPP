@@ -112,6 +112,9 @@ def add_payment_method(body=None):
         # Conexión a la base de datos
         print("[DEBUG] add_payment_method: Conectando a la base de datos")
         db_conexion = dbConectar()
+        if db_conexion is None:
+            print("[DEBUG] add_payment_method: ERROR - No se pudo conectar a la base de datos")
+            return Error(code="503", message="Error al conectar con la base de datos").to_dict(), 503
         cursor = db_conexion.cursor()
         print("[DEBUG] add_payment_method: Conexión establecida")
 
@@ -211,6 +214,9 @@ def delete_payment_method(payment_method_id):
 
         print("[DEBUG] delete_payment_method: Conectando a la base de datos")
         db_conexion = dbConectar()
+        if db_conexion is None:
+            print("[DEBUG] delete_payment_method: ERROR - No se pudo conectar a la base de datos")
+            return Error(code="503", message="Error al conectar con la base de datos").to_dict(), 503
         cursor = db_conexion.cursor()
         print("[DEBUG] delete_payment_method: Conexión establecida")
 
@@ -317,6 +323,9 @@ def show_user_payment_methods():
 
         # Consultar la base de datos con el user_id
         db_conexion = dbConectar()
+        if db_conexion is None:
+            print("[DEBUG] get_payment_methods: ERROR - No se pudo conectar a la base de datos")
+            return Error(code="503", message="Error al conectar con la base de datos").to_dict(), 503
         cursor = db_conexion.cursor()
 
         ids_metodos_pago = []
