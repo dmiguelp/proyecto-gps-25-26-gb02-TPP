@@ -241,6 +241,17 @@ paths:
       responses:
         "200":
           description: Payment method successfully added.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Método de pago agregado con id 5"
+                  userId:
+                    type: integer
+                    example: 1054
         "400":
           description: Invalid input.
         "500":
@@ -355,15 +366,24 @@ paths:
               $ref: "#/components/schemas/Purchase"
       responses:
         "200":
-          description: Successful operation
+          description: Purchase successfully registered
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  purchaseId:
+                  message:
+                    type: string
+                    example: "Compra registrada con id 9"
+                  userId:
                     type: integer
-                    example: 100
+                    example: 1054
+        "403":
+          description: Payment method does not belong to the user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "422":
           description: Validation exception
         "500":
@@ -447,11 +467,11 @@ components:
           example: "data:image/png;base64,iVBORw0KGgoAAAAN..."
         songList:
           type: array
-          description: List of the names of songs that an Album has (null if not album)
+          description: List of IDs of songs that an Album has (null if not album)
           example:
-          - Album 1
-          - Album 2
-          - Album 3
+          - 1
+          - 2
+          - 3
           nullable: true
           items:
             type: integer
@@ -461,10 +481,7 @@ components:
         releaseDate: 2010-01-15T10:30:00Z
         albumId: 0
         description: CELEBRATING TEN YEARS OF TEENAGE DREAM!! REMASTERED IN 4K!
-        songList:
-        - 1
-        - 2
-        - 3
+        songList: [1, 2, 3]
         merchId: 0
         duration: 10
         cover: "data:image/png;base64,iVBORw0KGgoAAAAN..."
