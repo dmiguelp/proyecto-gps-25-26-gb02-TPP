@@ -330,13 +330,8 @@ paths:
                     merchIds:
                       type: array
                       items:
-                        type: array
-                        items:
-                          type: integer
-                        minItems: 2
-                        maxItems: 2
-                      description: "List of merch items as [id, quantity] pairs"
-                      example: [[5, 2], [8, 1]]
+                        type: integer
+                      example: [5, 8]
         "500":
           description: Generic error.
           content:
@@ -553,13 +548,9 @@ components:
         merchIds:
           type: array
           items:
-            type: array
-            items:
-              type: integer
-            minItems: 2
-            maxItems: 2
-          description: "List of merch items to purchase as [id, quantity] pairs"
-          example: [[1, 2], [3, 1]]
+            type: integer
+          description: List of merch IDs to purchase
+          example: [1, 3]
       description: A purchase made by an user.
       example:
         purchasePrice: 10.99
@@ -567,7 +558,7 @@ components:
         paymentMethodId: 0
         songIds: [1, 2, 3]
         albumIds: [1, 2]
-        merchIds: [[1, 2], [3, 1]]
+        merchIds: [1]
     Error:
       required:
       - code

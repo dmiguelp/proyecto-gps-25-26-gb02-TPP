@@ -208,20 +208,11 @@ def set_purchase(body=None):
                 (id_compra, album_id)
             )
         
-        # merch_ids viene como [[id, cantidad], [id, cantidad], ...]
-        for merch_item in body.merch_ids:
-            if isinstance(merch_item, list) and len(merch_item) == 2:
-                merch_id, cantidad = merch_item
-                cursor.execute(
-                    "INSERT INTO MerchCompra (idCompra, idMerch, cantidad) VALUES (%s, %s, %s)",
-                    (id_compra, merch_id, cantidad)
-                )
-            else:
-                # Retrocompatibilidad: si viene solo el ID, asumir cantidad 1
-                cursor.execute(
-                    "INSERT INTO MerchCompra (idCompra, idMerch, cantidad) VALUES (%s, %s, %s)",
-                    (id_compra, merch_item, 1)
-                )
+        for merch_id in body.merch_ids:
+            cursor.execute(
+                "INSERT INTO MerchCompra (idCompra, idMerch) VALUES (%s, %s)",
+                (id_compra, merch_id)
+            )
         
         print(f"[DEBUG] create_purchase: Productos registrados para compra {id_compra}")
 
@@ -258,9 +249,7 @@ def set_purchase(body=None):
             # Eliminar merchandising del carrito
             if body.merch_ids:
                 print(f"[DEBUG] create_purchase: Eliminando {len(body.merch_ids)} items de merch del carrito: {body.merch_ids}")
-                for merch_item in body.merch_ids:
-                    # Extraer el ID del merch (puede venir como [id, cantidad] o solo id)
-                    merch_id = merch_item[0] if isinstance(merch_item, list) else merch_item
+                for merch_id in body.merch_ids:
                     cursor.execute(
                         "DELETE FROM MerchCarrito WHERE idMerch = %s AND idUsuario = %s",
                         (merch_id, user_id)
@@ -373,14 +362,13 @@ def get_user_purchases():
             album_ids = [r[0] for r in cursor.fetchall()]
             print(f"[DEBUG] get_user_purchases: Compra {purchase_id} - {len(album_ids)} álbumes")
             
-            # Obtener merch de esta compra (con cantidad)
+            # Obtener merch de esta compra
             cursor.execute("""
-                SELECT idMerch, cantidad
+                SELECT idMerch
                 FROM MerchCompra
                 WHERE idCompra = %s
             """, (purchase_id,))
-            merch_items = cursor.fetchall()
-            merch_ids = [[r[0], r[1]] for r in merch_items]  # [[id, cantidad], ...]
+            merch_ids = [r[0] for r in cursor.fetchall()]
             print(f"[DEBUG] get_user_purchases: Compra {purchase_id} - {len(merch_ids)} items de merch")
             
             # Construir objeto de compra
