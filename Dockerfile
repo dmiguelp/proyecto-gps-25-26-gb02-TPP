@@ -1,16 +1,9 @@
-FROM python:3.6-alpine
+FROM ubuntu:latest
 
-RUN mkdir -p /usr/src/app
-WORKDIR /usr/src/app
-
-COPY requirements.txt /usr/src/app/
-
-RUN pip3 install --no-cache-dir -r requirements.txt
-
-COPY . /usr/src/app
-
-EXPOSE 8080
-
-ENTRYPOINT ["python3"]
-
-CMD ["-m", "swagger_server"]
+RUN apt-get update && apt upgrade -y && apt install python3-pip python3-venv -y && apt autoremove -y
+COPY . /tpp
+WORKDIR /tpp
+RUN python3 -m venv .venv
+RUN .venv/bin/pip install --no-cache-dir -r requirements.txt
+EXPOSE 8000
+CMD [".venv/bin/python", "-m", "swagger_server"]
