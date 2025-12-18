@@ -19,11 +19,16 @@ def is_valid_token(token):
     - Consulta a BD de sesiones/usuarios
     - Integración con OAuth/IAM
     """
+    print(f"[DEBUG] is_valid_token: Inicio - token={token[:20] if token else None}...")
     try:
-        resp = requests.get(f"{AUTH_SERVER}/auth", timeout=2, headers={"Accept": "application/json", "Cookie":f"oversound_auth={token}"})
+        url = f"{AUTH_SERVER}/auth"
+        headers = {"Accept": "application/json", "Cookie": f"oversound_auth={token}"}
+        print(f"[DEBUG] is_valid_token: Realizando petición GET a {url} con headers={headers}")
+        resp = requests.get(url, timeout=2, headers=headers)
+        print(f"[DEBUG] is_valid_token: Respuesta obtenida - status_code={resp.status_code}, body={resp.text}")
         return resp.json() if resp.ok else None
     except Exception as e:
-        print(f"Couldn't connect to SYU microservice: {e}")
+        print(f"[DEBUG] is_valid_token: ERROR - Couldn't connect to SYU microservice: {e}")
         return None
 
 
