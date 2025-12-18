@@ -1,6 +1,7 @@
 from typing import List
 import requests
 import connexion
+import os
 """
 controller generated to handled auth operation described at:
 https://connexion.readthedocs.io/en/latest/security.html
@@ -8,7 +9,7 @@ https://connexion.readthedocs.io/en/latest/security.html
 
 from swagger_server.models.error import Error
 
-AUTH_SERVER = 'http://localhost:8080'
+AUTH_SERVER = os.getenv('HOST_SYU', 'http://localhost:8080')
 
 def is_valid_token(token):
     """

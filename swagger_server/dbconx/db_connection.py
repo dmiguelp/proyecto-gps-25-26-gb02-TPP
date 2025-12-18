@@ -1,13 +1,14 @@
 import psycopg2 as DB
 from psycopg2.extensions import connection
+import os
 
 def dbConectar() -> connection:
-    ip = "10.1.1.1"
-    puerto = 5432
-    basedatos = "tpp"
+    ip = os.getenv('DB_HOST', '10.1.1.1')
+    puerto = os.getenv('DB_PORT', 5432)
+    basedatos = os.getenv('DB_NAME', 'tpp')
 
-    usuario = "tpp_admin"
-    contrasena = "12345"
+    usuario = os.getenv('DB_USER', 'tpp_admin')
+    contrasena = os.getenv('DB_PWD', '12345')
 
     print("---dbConectar---")
     print("---Conectando a Postgresql---")
